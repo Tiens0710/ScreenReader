@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "TextGrab"
 include(":app")
+include(":ppocr-sdk")
