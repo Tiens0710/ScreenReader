@@ -40,6 +40,10 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCameraBinding
     private var controller: LifecycleCameraController? = null
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(App.localizedContext(newBase))
+    }
+
     private val requestPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {

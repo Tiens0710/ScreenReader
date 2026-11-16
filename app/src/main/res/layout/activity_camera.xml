@@ -5,46 +5,97 @@
     android:layout_height="match_parent"
     android:background="#FF000000">
 
+    <!-- Camera Preview fills full screen -->
     <androidx.camera.view.PreviewView
         android:id="@+id/preview"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Glass Controls Overlay -->
     <FrameLayout
         android:id="@+id/controls"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <!-- Top Glass Bar gradient -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:layout_gravity="top"
+            android:background="@drawable/bg_camera_top_scrim" />
+
+        <!-- Bottom Glass Bar gradient -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="160dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/bg_camera_bottom_scrim" />
+
+        <!-- Close Button – Glass Pill -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnClose"
-            style="?attr/materialIconButtonFilledTonalStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:layout_gravity="top|start"
-            android:layout_margin="8dp"
+            android:layout_margin="16dp"
             android:contentDescription="@string/back"
-            app:icon="@drawable/ic_back" />
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:background="@drawable/bg_glass_icon_toggle"
+            app:backgroundTint="@null"
+            app:icon="@drawable/ic_back"
+            app:iconTint="#F8FAFC"
+            app:iconSize="22dp"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            android:gravity="center"
+            app:cornerRadius="26dp" />
 
+        <!-- Torch Toggle Button – Glass Pill -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnTorch"
-            style="?attr/materialIconButtonFilledTonalStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:layout_gravity="top|end"
-            android:layout_margin="8dp"
+            android:layout_margin="16dp"
             android:checkable="true"
             android:contentDescription="@string/camera_torch"
-            app:icon="@drawable/ic_bolt" />
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"
+            android:background="@drawable/bg_glass_icon_toggle"
+            app:backgroundTint="@null"
+            app:icon="@drawable/ic_bolt"
+            app:iconTint="#F8FAFC"
+            app:iconSize="22dp"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            android:gravity="center"
+            app:cornerRadius="26dp" />
 
+        <!-- Zoom / Focus ring hint (decorative only) -->
+        <View
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_camera_viewfinder" />
+
+        <!-- Shutter Button -->
         <View
             android:id="@+id/btnShutter"
-            android:layout_width="76dp"
-            android:layout_height="76dp"
+            android:layout_width="84dp"
+            android:layout_height="84dp"
             android:layout_gravity="bottom|center_horizontal"
-            android:layout_marginBottom="32dp"
+            android:layout_marginBottom="40dp"
             android:background="@drawable/shutter"
             android:clickable="true"
             android:contentDescription="@string/camera_shutter"
+            android:elevation="4dp"
             android:focusable="true" />
     </FrameLayout>
 </FrameLayout>
