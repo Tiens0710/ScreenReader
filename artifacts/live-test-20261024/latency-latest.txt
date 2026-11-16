@@ -1,0 +1,110 @@
+--------- beginning of main
+10-24 16:15:20.631  7362  7789 I GeminiLive: Waiting for capture: appVisible=true, connected=true
+10-24 16:16:19.594  7362  8138 I GeminiLive: Waiting for capture: appVisible=true, connected=false
+10-24 16:16:19.889  7362  8141 I GeminiLive: WebSocket opened (HTTP 101); sending session setup
+10-24 16:16:21.089  7362  8141 I GeminiLive: Gemini Live setup complete for gemini-3.8-live
+10-24 16:16:21.090  7362  8141 I GeminiLive: Session ready; waiting for a target-app frame
+10-24 16:16:21.614  7362  8138 I GeminiLive: First screen frame captured: 738x1600
+10-24 16:16:21.615  7362  8138 I GeminiLive: Screen changed; version=1
+10-24 16:16:22.944  7362  7819 I PaddleLiveOCR: OCR timing total=908ms det=279ms rec=621ms lines=26 recBatches=13 detShape=[1, 3, 1280, 576]
+10-24 16:16:22.946  7362  7819 I GeminiLive: PP-OCRv5 primary localized 15 blocks in 1327ms; success=true
+10-24 16:16:22.949  7362  7362 I GeminiLive: PP-OCRv5 Latin localized 15 text blocks for screen version=1 in 1330ms
+10-24 16:16:23.656  7362  8138 I GeminiLive: OCR text sent to Gemini: chars=24, pass=1
+10-24 16:16:24.510  7362  8141 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:16:26.362  7362  8141 I GeminiLive: Gemini turn complete
+10-24 16:16:26.363  7362  8141 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:16:27.663  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:16:33.692  7362  8138 I GeminiLive: OCR text sent to Gemini: chars=41, pass=2
+10-24 16:16:34.746  7362  8141 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:16:38.509  7362  8141 I GeminiLive: Gemini turn complete
+10-24 16:16:38.510  7362  8141 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:16:39.710  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:16:45.723  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:16:51.739  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:16:57.750  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:17:03.786  7362  8138 I GeminiLive: OCR text sent to Gemini: chars=17, pass=3
+10-24 16:17:04.520  7362  8141 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:17:06.059  7362  8141 I GeminiLive: Gemini turn complete
+10-24 16:17:06.059  7362  8141 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:17:07.793  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:17:13.805  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:17:19.817  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:17:25.830  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:17:31.842  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:17:37.891  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:17:43.905  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:17:49.922  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:17:55.955  7362  8138 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:23:14.770  8998  9229 I GeminiLive: Waiting for capture: appVisible=true, connected=false
+10-24 16:23:15.531  8998  9232 I GeminiLive: WebSocket opened (HTTP 101); sending session setup
+10-24 16:23:16.184  8998  9232 I GeminiLive: Gemini Live setup complete for gemini-3.8-live
+10-24 16:23:16.184  8998  9232 I GeminiLive: Session ready; waiting for a target-app frame
+10-24 16:23:18.842  8998  9229 I GeminiLive: First screen frame captured: 738x1600
+10-24 16:23:18.844  8998  9229 I GeminiLive: Screen changed; version=1
+10-24 16:23:22.964  8998  9253 I PaddleLiveOCR: OCR timing total=3024ms det=2058ms rec=954ms lines=13 recBatches=7 detShape=[1, 3, 1280, 576]
+10-24 16:23:22.969  8998  9253 I GeminiLive: PP-OCRv5 primary localized 12 blocks in 4110ms; success=true
+10-24 16:23:22.972  8998  8998 I GeminiLive: PP-OCRv5 Latin localized 12 text blocks for screen version=1 in 4114ms
+10-24 16:23:24.903  8998  9229 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:23:30.915  8998  9229 W GeminiLive: No screen frame available from MediaProjection yet
+10-24 16:23:32.934  8998  9229 I GeminiLive: Screen changed; version=2
+10-24 16:23:35.011  8998  9253 I PaddleLiveOCR: OCR timing total=2062ms det=1288ms rec=772ms lines=9 recBatches=5 detShape=[1, 3, 1280, 576]
+10-24 16:23:35.012  8998  9253 I GeminiLive: PP-OCRv5 primary localized 6 blocks in 2072ms; success=true
+10-24 16:23:35.014  8998  8998 I GeminiLive: PP-OCRv5 Latin localized 6 text blocks for screen version=2 in 2074ms
+10-24 16:23:37.228  8998  9229 I GeminiLive: Screen changed; version=3
+10-24 16:23:38.584  8998  9253 I PaddleLiveOCR: OCR timing total=1114ms det=311ms rec=794ms lines=14 recBatches=7 detShape=[1, 3, 1280, 576]
+10-24 16:23:38.585  8998  9253 I GeminiLive: PP-OCRv5 primary localized 7 blocks in 1348ms; success=true
+10-24 16:23:38.588  8998  8998 I GeminiLive: PP-OCRv5 Latin localized 7 text blocks for screen version=3 in 1351ms
+10-24 16:23:39.288  8998  9229 I GeminiLive: OCR text sent to Gemini: chars=71, pass=1
+10-24 16:23:40.137  8998  9232 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:23:44.631  8998  9232 I GeminiLive: Gemini turn complete
+10-24 16:23:44.632  8998  9232 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:23:47.328  8998  9229 I GeminiLive: OCR text sent to Gemini: chars=58, pass=2
+10-24 16:23:48.041  8998  9232 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:23:52.262  8998  9232 I GeminiLive: Gemini turn complete
+10-24 16:23:52.262  8998  9232 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:23:55.370  8998  9229 I GeminiLive: OCR text sent to Gemini: chars=30, pass=3
+10-24 16:23:56.195  8998  9232 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:23:58.808  8998  9232 I GeminiLive: Gemini turn complete
+10-24 16:23:58.808  8998  9232 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:45:22.702 10186 10688 I GeminiLive: Waiting for capture: appVisible=true, connected=false
+10-24 16:45:24.028 10186 10692 I GeminiLive: WebSocket opened (HTTP 101); sending session setup
+10-24 16:45:24.667 10186 10692 I GeminiLive: Gemini Live setup complete for gemini-3.8-live
+10-24 16:45:24.669 10186 10692 I GeminiLive: Session ready; waiting for a target-app frame
+10-24 16:45:24.773 10186 10688 I GeminiLive: First screen frame captured: 738x1600
+10-24 16:45:24.774 10186 10688 I GeminiLive: Screen changed; version=1
+10-24 16:45:26.042 10186 10438 I PaddleLiveOCR: OCR timing total=1202ms det=494ms rec=692ms lines=25 recBatches=13 detShape=[1, 3, 1280, 576]
+10-24 16:45:26.047 10186 10438 I GeminiLive: PP-OCRv5 primary localized 15 blocks in 1256ms; success=true
+10-24 16:45:26.050 10186 10186 I GeminiLive: PP-OCRv5 Latin localized 15 text blocks for screen version=1 in 1260ms
+10-24 16:45:26.082 10186 10688 I GeminiLive: OCR text sent to Gemini: chars=24, pass=1
+10-24 16:45:26.530 10186 10692 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:45:28.316 10186 10692 I GeminiLive: Gemini turn complete
+10-24 16:45:28.316 10186 10692 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:45:28.504 10186 10688 I GeminiLive: OCR text sent to Gemini: chars=41, pass=2
+10-24 16:45:28.962 10186 10692 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:45:33.465 10186 10692 I GeminiLive: Gemini turn complete
+10-24 16:45:33.465 10186 10692 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:45:33.681 10186 10688 I GeminiLive: OCR text sent to Gemini: chars=17, pass=3
+10-24 16:45:34.166 10186 10692 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:45:35.974 10186 10692 I GeminiLive: Gemini turn complete
+10-24 16:45:35.974 10186 10692 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:45:53.702 10186 10688 I GeminiLive: Screen changed; version=2
+10-24 16:45:54.083 10186 10688 I GeminiLive: Screen changed; version=3
+10-24 16:45:58.279 10186 10439 I PaddleLiveOCR: OCR timing total=4167ms det=3014ms rec=1143ms lines=25 recBatches=13 detShape=[1, 3, 1280, 576]
+10-24 16:45:58.282 10186 10439 I GeminiLive: PP-OCRv5 primary localized 15 blocks in 4190ms; success=true
+10-24 16:45:58.285 10186 10186 I GeminiLive: PP-OCRv5 Latin localized 15 text blocks for screen version=3 in 4192ms
+10-24 16:45:58.321 10186 10688 I GeminiLive: Screen changed; version=4
+10-24 16:45:59.925 10186 10439 I PaddleLiveOCR: OCR timing total=1581ms det=1167ms rec=401ms lines=27 recBatches=14 detShape=[1, 3, 1280, 576]
+10-24 16:45:59.925 10186 10439 I GeminiLive: PP-OCRv5 primary localized 10 blocks in 1594ms; success=true
+10-24 16:45:59.933 10186 10186 I GeminiLive: PP-OCRv5 Latin localized 10 text blocks for screen version=4 in 1597ms
+10-24 16:45:59.935 10186 10688 I GeminiLive: OCR text sent to Gemini: chars=53, pass=1
+10-24 16:46:00.628 10186 10692 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:46:05.728 10186 10692 I GeminiLive: Gemini turn complete
+10-24 16:46:05.728 10186 10692 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:46:05.969 10186 10688 I GeminiLive: OCR text sent to Gemini: chars=33, pass=2
+10-24 16:46:06.513 10186 10692 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:46:09.616 10186 10692 I GeminiLive: Gemini turn complete
+10-24 16:46:09.617 10186 10692 I GeminiLive: Turn complete: audio=true, highlightedRegions=1
+10-24 16:46:09.835 10186 10688 I GeminiLive: OCR text sent to Gemini: chars=14, pass=3
+10-24 16:46:10.300 10186 10692 I GeminiLive: Audio received with visual authorization; regions=1
+10-24 16:46:12.434 10186 10692 I GeminiLive: Gemini turn complete
+10-24 16:46:12.434 10186 10692 I GeminiLive: Turn complete: audio=true, highlightedRegions=1

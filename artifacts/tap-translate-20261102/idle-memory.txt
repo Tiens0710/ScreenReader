@@ -1,0 +1,57 @@
+Applications Memory Usage (in Kilobytes):
+Uptime: 603523 Realtime: 603523
+
+** MEMINFO in pid 5168 [com.arslan.textgrab.personal] **
+                   Pss  Private  Private  SwapPss      Rss     Heap     Heap     Heap
+                 Total    Dirty    Clean    Dirty    Total     Size    Alloc     Free
+                ------   ------   ------   ------   ------   ------   ------   ------
+  Native Heap    33179    33116       28       45    34096    51180    31362    15546
+  Dalvik Heap    32452    32324       60      102    33408    13310     6655     6655
+ Dalvik Other    11796     3920        4        1    19984                           
+        Stack     1004     1004        0        0     1008                           
+       Ashmem       12        0        0        0      588                           
+    Other dev       14        0        8        0      336                           
+     .so mmap     7104      348     2980       11    40876                           
+    .jar mmap     3828        0      720        0    46184                           
+    .apk mmap    35943     1880    33564        0    38200                           
+    .ttf mmap      985        0      388        0     1764                           
+    .dex mmap       10        0        0        0      864                           
+    .oat mmap       30        0        0        0     1792                           
+    .art mmap     9616     8152      224       91    24300                           
+   Other mmap     4555        4      356        0     9948                           
+      Unknown    22002    21988        4        0    22384                           
+        TOTAL   162780   102736    38336      250   275732    64490    38017    22201
+ 
+ App Summary
+                       Pss(KB)                        Rss(KB)
+                        ------                         ------
+           Java Heap:    40700                          57708
+         Native Heap:    33116                          34096
+                Code:    40040                         145588
+               Stack:     1004                           1008
+            Graphics:        0                              0
+       Private Other:    26212
+              System:    21708
+             Unknown:                                   37332
+ 
+           TOTAL PSS:   162780            TOTAL RSS:   275732       TOTAL SWAP PSS:      250
+ 
+ Objects
+               Views:      119         ViewRootImpl:        3
+         AppContexts:       11           Activities:        2
+              Assets:       20        AssetManagers:        0
+       Local Binders:       20        Proxy Binders:       70
+       Parcel memory:        8         Parcel count:       33
+    Death Recipients:        1             WebViews:        0
+ 
+ SQL
+         MEMORY_USED:      152
+  PAGECACHE_OVERFLOW:       89          MALLOC_SIZE:       46
+ 
+ DATABASES
+      pgsz     dbsz   Lookaside(b) cache hits cache misses cache size  Dbname
+PER CONNECTION STATS
+         4      252             68  2141   403     6  /data/user/0/com.arslan.textgrab.personal/databases/com.google.android.datatransport.events
+POOL STATS
+     cache hits  cache misses    cache size  Dbname
+           2141           404          2545  /data/user/0/com.arslan.textgrab.personal/databases/com.google.android.datatransport.events

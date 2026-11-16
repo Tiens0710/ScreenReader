@@ -1,0 +1,10 @@
+--------- beginning of main
+11-02 22:33:58.925  5168  5168 I ScreenTranslate: Ready; idle capture and network are off
+11-02 22:34:19.710  5168  5168 I ScreenTranslate: One snapshot acquired; capture surface detached
+11-02 22:34:20.723  5168  5429 I PaddleLiveOCR: OCR timing total=414ms det=333ms rec=73ms lines=3 recBatches=2 detShape=[1, 3, 1280, 576]
+11-02 22:34:21.948  5168  5168 I ScreenTranslate: One translation requested; chars=44
+11-02 22:34:26.740  5168  5168 I ScreenTranslate: Translation complete; no automatic playback or next request
+11-02 22:35:25.828  5168  5168 I ScreenTranslate: One snapshot acquired; capture surface detached
+11-02 22:35:26.701  5168  5429 I PaddleLiveOCR: OCR timing total=336ms det=266ms rec=63ms lines=3 recBatches=2 detShape=[1, 3, 1280, 576]
+11-02 22:35:27.734  5168  5168 I ScreenTranslate: One translation requested; chars=44
+11-02 22:35:31.634  5168  5168 I ScreenTranslate: Translation complete; no automatic playback or next request
