@@ -1,5 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Core Backgrounds -->
+    <color name="window_background">#0A0F1D</color>
+    <color name="glass_canvas_top">#0A0F1D</color>
+    <color name="glass_canvas_mid">#0F172A</color>
+    <color name="glass_canvas_bottom">#06131E</color>
 
-    <color name="window_background">#FEF7FF</color>
+    <!-- Ambient Glow Orbs -->
+    <color name="glass_orb_teal">#250D9488</color>
+    <color name="glass_orb_indigo">#204F46E5</color>
+    <color name="glass_orb_cyan">#1A0284C7</color>
+
+    <!-- Translucent Glass Surfaces -->
+    <color name="glass_surface_subtle">#0DFFFFFF</color>
+    <color name="glass_surface_card">#17FFFFFF</color>
+    <color name="glass_surface_card_bottom">#0AFFFFFF</color>
+    <color name="glass_surface_raised">#24FFFFFF</color>
+    <color name="glass_surface_floating">#E60F172A</color>
+    <color name="glass_surface_panel">#F20B1120</color>
+
+    <!-- Glass Borders (Chamfer Highlights) -->
+    <color name="glass_border_faint">#1FFFFFFF</color>
+    <color name="glass_border">#33FFFFFF</color>
+    <color name="glass_border_highlight">#59FFFFFF</color>
+    <color name="glass_border_teal">#662DD4BF</color>
+    <color name="glass_border_cyan">#5938BDF8</color>
+
+    <!-- Vibrant Accents -->
+    <color name="glass_teal_start">#0F766E</color>
+    <color name="glass_teal_end">#047857</color>
+    <color name="glass_hero_border">#805EEAD4</color>
+    <color name="glass_cyan_accent">#38BDF8</color>
+    <color name="glass_emerald_accent">#34D399</color>
+    <color name="glass_ruby_start">#9F1239</color>
+    <color name="glass_ruby_end">#881337</color>
+    <color name="glass_ruby_border">#80FB7185</color>
+
+    <!-- Typography -->
+    <color name="glass_text_primary">#F8FAFC</color>
+    <color name="glass_text_secondary">#CBD5E1</color>
+    <color name="glass_text_muted">#94A3B8</color>
+    <color name="glass_text_accent">#5EEAD4</color>
 </resources>

@@ -2,18 +2,29 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
     namespace = "com.arslan.textgrab"
     compileSdk = 36
 
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
     defaultConfig {
         applicationId = "com.arslan.textgrab"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "2.0"
+        versionCode = 5
+        versionName = "2.2"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     val keystoreProps = Properties().apply {
@@ -32,6 +43,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".personal"
+            versionNameSuffix = "-personal"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -58,6 +73,10 @@ android {
 }
 
 dependencies {
+    implementation(project(":ppocr-sdk"))
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.appcompat:appcompat:1.7.1")

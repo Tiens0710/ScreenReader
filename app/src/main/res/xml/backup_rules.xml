@@ -2,4 +2,5 @@
 
 <full-backup-content>
     <exclude domain="sharedpref" path="translate_engines.xml" />
+    <exclude domain="file" path="gemini-key.import" />
 </full-backup-content>

@@ -3,29 +3,34 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingTop="8dp"
-    android:paddingBottom="16dp">
+    android:background="@drawable/bg_glass_bottom_sheet"
+    android:paddingTop="16dp"
+    android:paddingBottom="24dp">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="24dp"
         android:text="@string/language_packs"
-        android:textAppearance="?attr/textAppearanceTitleLarge" />
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#F8FAFC" />
 
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="24dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="6dp"
         android:text="@string/language_packs_hint"
-        android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:textColor="?attr/colorOnSurfaceVariant" />
+        android:textSize="15sp"
+        android:lineSpacingExtra="3dp"
+        android:textColor="#94A3B8" />
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp">
+        android:layout_marginTop="16dp"
+        android:paddingHorizontal="16dp">
 
         <LinearLayout
             android:id="@+id/languageList"

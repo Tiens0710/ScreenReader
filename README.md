@@ -1,5 +1,37 @@
 # TextGrab
 
+## Personal build
+
+This personal build adds a large Vietnamese interface, a floating tap-to-translate button, and optional read-aloud playback.
+
+### Simple interface
+
+The home screen offers screen translation, choosing an image, and taking a photo. The configuration screen uses large text, explicit enable/disable actions, and collapsed connection settings for helpers. The floating button is labeled “Dịch”; results have Nghe đọc, Dịch lại, and Đóng. This is an interface review on an emulator, not a usability study with older adults.
+
+### Tap to translate (version 2.2)
+
+Open **Dịch màn hình → Bật nút Dịch**, allow display over other apps, and accept Android screen sharing for the entire display. Open the page you want to translate and tap the floating **Dịch** button. Drag the button to move it. Android may hide app overlays on protected pages such as Settings; protected windows cannot be captured.
+
+Each tap takes one screenshot, detaches the capture surface, runs PaddleOCR Latin locally (ML Kit Latin is a fallback), and sends the recognized text to Gemini for a full Vietnamese translation. No automatic sampling timer, OCR, microphone capture, or Gemini connection runs while idle. The projection permission/foreground notification stays active until you disable the button, but the virtual display has no surface except during a requested capture. Images remain local and are recycled after OCR.
+
+Results use large text and three controls: **Nghe đọc**, **Dịch lại**, and **Đóng**. The translation does not speak automatically. Gemini Zephyr audio from that requested translation is stored temporarily as a private bounded WAV file (at most 8 MiB) and played locally only when you tap **Nghe đọc**. **Dịch lại** hides the result before taking a new screenshot. **Đóng** dismisses the result, stops playback, and cancels a pending request. Disable the floating button from the app or ongoing notification to end screen sharing and remove the overlay.
+
+The entire visible screen is translated; selection of a smaller region is not implemented. Screens with over 8000 recognized characters report a limit rather than silently truncating the input. If a long audio reply reaches its size limit, the result says only the first portion is available to hear. API usage is charged to the configured Gemini key.
+
+API keys are entered once and encrypted using Android Keystore in no-backup private storage. No API key is embedded in the APK or source. Debug devices can provision `files/gemini-key.import`, which is encrypted and deleted when the configuration screen opens. The legacy Live classes remain for reference and their regression tests; the main screen now opens the on-demand service, not the automatic Live service.
+
+### Local image OCR
+
+Tap the speaker to read the selected text, or the full OCR result when nothing is selected.
+When translation is active, it reads the translated text. Speech uses Android's installed
+text-to-speech voice; install a Vietnamese voice in Android's text-to-speech settings for
+Vietnamese pronunciation. Image OCR remains on-device. Gemini Live is the separate cloud-assisted mode.
+
+On Windows, open this folder in Android Studio or build a debug APK with
+`gradlew.bat assembleDebug`. The APK is written to
+`app/build/outputs/apk/debug/app-debug.apk`. Debug builds use the separate package
+`com.arslan.textgrab.personal`, so they can be installed alongside the upstream app.
+
 Select, copy and translate the text of anything on your Android screen. One
 gesture captures the screen, and a moment later every word on it is
 selectable. Like iOS Live Text or Circle to Search, but the recognition runs
@@ -100,6 +132,6 @@ Chinese, Japanese and Korean recognition, and a redesigned interface. It uses
 its own package name, `com.arslan.textgrab`, so it installs next to the
 original.
 
-The app source code is licensed under the [MIT License](LICENSE). The bundled
-ML Kit SDKs and their models are proprietary Google software, used under the
-[ML Kit Terms of Service](https://developers.google.com/ml-kit/terms).
+The app source code is licensed under the [MIT License](LICENSE). Photo OCR uses ML Kit under the
+[ML Kit Terms of Service](https://developers.google.com/ml-kit/terms). The bundled PaddleOCR Android
+SDK and PP-OCRv5 Mobile Latin model are Apache-2.0 licensed; see [ppocr-sdk/LICENSE](ppocr-sdk/LICENSE).

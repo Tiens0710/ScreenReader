@@ -73,8 +73,7 @@ object Translator {
 
     fun defaultTarget(context: Context): String =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_TARGET, null)
-            ?: TranslateLanguage.fromLanguageTag(Locale.getDefault().language)
-            ?: TranslateLanguage.ENGLISH
+            ?: TranslateLanguage.VIETNAMESE
 
     fun saveTarget(context: Context, code: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()

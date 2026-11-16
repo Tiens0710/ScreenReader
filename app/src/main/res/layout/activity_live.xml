@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@drawable/bg_glass_canvas">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="40dp">
+
+        <!-- Back Button as a Glass Pill -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLiveBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:paddingHorizontal="16dp"
+            android:text="@string/simple_back"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#F8FAFC"
+            android:background="@drawable/bg_glass_button_secondary"
+            app:backgroundTint="@null"
+            app:icon="@drawable/ic_back"
+            app:iconTint="#5EEAD4"
+            app:cornerRadius="16dp" />
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/live_title"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:textColor="#F8FAFC" />
+
+        <!-- Live Status Glass Pill Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="16dp"
+            android:background="@drawable/bg_glass_card">
+
+            <View
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="@drawable/bg_glass_pill_status"
+                android:backgroundTint="#34D399" />
+
+            <TextView
+                android:id="@+id/liveStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:accessibilityLiveRegion="polite"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#5EEAD4" />
+        </LinearLayout>
+
+        <!-- Instructions Glass Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:background="@drawable/bg_glass_card">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="HƯỚNG DẪN NHANH"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.06"
+                android:textColor="#38BDF8" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/simple_steps"
+                android:textSize="17sp"
+                android:lineSpacingExtra="6dp"
+                android:textColor="#E2E8F0" />
+        </LinearLayout>
+
+        <!-- Primary Toggle Start/Stop Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLiveStart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="80dp"
+            android:paddingVertical="18dp"
+            android:paddingHorizontal="24dp"
+            android:layout_marginTop="24dp"
+            android:text="@string/live_start"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bg_glass_hero"
+            app:backgroundTint="@null"
+            app:icon="@drawable/ic_translate"
+            app:iconTint="#FFFFFF"
+            app:iconSize="28dp"
+            app:iconGravity="textStart"
+            app:cornerRadius="22dp"
+            android:elevation="6dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLivePause"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="64dp"
+            android:paddingVertical="12dp"
+            android:text="@string/live_pause"
+            android:textSize="18sp"
+            android:visibility="gone"
+            android:background="@drawable/bg_glass_button_secondary"
+            app:backgroundTint="@null"
+            app:cornerRadius="18dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLiveMinimize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="64dp"
+            android:paddingVertical="12dp"
+            android:layout_marginTop="12dp"
+            android:text="@string/live_minimize"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#F8FAFC"
+            android:visibility="gone"
+            android:background="@drawable/bg_glass_button_secondary"
+            app:backgroundTint="@null"
+            app:cornerRadius="18dp" />
+
+        <!-- Privacy Assurance -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:paddingHorizontal="4dp"
+            android:text="@string/live_privacy"
+            android:textSize="15sp"
+            android:lineSpacingExtra="4dp"
+            android:textColor="#94A3B8" />
+
+        <!-- Recent Translation Panel -->
+        <TextView
+            android:id="@+id/translationPreviewTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"
+            android:text="@string/live_transcript_title"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#F8FAFC" />
+
+        <TextView
+            android:id="@+id/liveTranscript"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="110dp"
+            android:padding="20dp"
+            android:background="@drawable/bg_glass_card"
+            android:text="@string/live_transcript_empty"
+            android:textSize="20sp"
+            android:lineSpacingExtra="6dp"
+            android:textColor="#F1F5F9"
+            android:textIsSelectable="true" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLivePanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:layout_marginTop="12dp"
+            android:text="@string/live_panel_open"
+            android:textSize="17sp"
+            android:textColor="#38BDF8"
+            android:background="@drawable/bg_glass_button_secondary"
+            app:backgroundTint="@null"
+            android:visibility="gone" />
+
+        <!-- Settings Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLiveOptions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="60dp"
+            android:layout_marginTop="24dp"
+            android:text="@string/simple_options"
+            android:textSize="17sp"
+            android:textColor="#CBD5E1"
+            android:background="@drawable/bg_glass_button_secondary"
+            app:backgroundTint="@null"
+            app:icon="@drawable/ic_settings"
+            app:iconTint="#94A3B8"
+            app:iconGravity="textStart"
+            app:cornerRadius="16dp" />
+
+        <!-- Expandable Options Glass Card -->
+        <LinearLayout
+            android:id="@+id/liveOptions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:background="@drawable/bg_glass_card"
+            android:visibility="gone">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchVoice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:text="@string/live_voice"
+                android:textSize="18sp"
+                android:textColor="#F8FAFC"
+                android:checked="true" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchMic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:text="@string/live_mic"
+                android:textSize="18sp"
+                android:textColor="#F8FAFC"
+                android:checked="false" />
+
+            <TextView
+                android:id="@+id/liveKeyStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textSize="16sp"
+                android:textColor="#94A3B8" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLiveKey"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/live_key_edit"
+                android:textSize="16sp"
+                android:textColor="#5EEAD4"
+                android:background="@drawable/bg_glass_button_secondary"
+                app:backgroundTint="@null"
+                app:cornerRadius="14dp" />
+
+            <TextView
+                android:id="@+id/liveFrames"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="15sp"
+                android:textColor="#64748B" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

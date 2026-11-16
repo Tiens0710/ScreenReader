@@ -77,9 +77,13 @@ object OcrEngine {
 
     fun warmUp() {
         if (latin != null) return
+        val startedAt = android.os.SystemClock.elapsedRealtime()
         val bmp = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
         latin().process(InputImage.fromBitmap(bmp, 0))
-            .addOnCompleteListener { bmp.recycle() }
+            .addOnCompleteListener {
+                bmp.recycle()
+                android.util.Log.i("MLKitLiveOCR", "Latin text recognizer warm-up ${android.os.SystemClock.elapsedRealtime() - startedAt}ms")
+            }
     }
 
     fun release() {
@@ -98,6 +102,12 @@ object OcrEngine {
             }
         }
         return buildResult(best.lines)
+    }
+
+    /** Fast Latin-script pass for live region geometry; Gemini remains responsible for reading. */
+    suspend fun recognizeLatin(bitmap: Bitmap): Result {
+        val text = latin().run(InputImage.fromBitmap(bitmap, 0))
+        return buildResult(score(text).lines)
     }
 
     private suspend fun TextRecognizer.run(image: InputImage): Text =

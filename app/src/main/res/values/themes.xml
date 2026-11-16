@@ -1,12 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="Theme.TextGrab" parent="Theme.Material3Expressive.DynamicColors.DayNight.NoActionBar" />
+    <!-- Glass BottomSheetDialog theme: transparent window so glass layout shows -->
+    <style name="Theme.TextGrab.BottomSheet" parent="Theme.Material3.BottomSheetDialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="bottomSheetStyle">@style/GlassBottomSheetStyle</item>
+        <item name="colorSurface">#00000000</item>
+        <item name="colorOnSurface">#F8FAFC</item>
+        <item name="colorOnSurfaceVariant">#94A3B8</item>
+        <item name="colorPrimary">#2DD4BF</item>
+    </style>
+
+    <style name="GlassBottomSheetStyle" parent="Widget.Material3.BottomSheet.Modal">
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="android:elevation">0dp</item>
+    </style>
+
+    <style name="Theme.TextGrab" parent="Theme.Material3Expressive.DynamicColors.DayNight.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_glass_canvas</item>
+        <item name="colorSurface">#00000000</item>
+        <item name="colorOnSurface">#F8FAFC</item>
+        <item name="colorOnSurfaceVariant">#94A3B8</item>
+        <item name="colorPrimary">#2DD4BF</item>
+        <item name="colorOnPrimary">#042F2E</item>
+        <item name="colorSurfaceContainer">#14FFFFFF</item>
+        <item name="colorSurfaceContainerHigh">#1AFFFFFF</item>
+        <item name="android:statusBarColor">#00000000</item>
+        <item name="android:navigationBarColor">#00000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
 
     <style name="Theme.TextGrab.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/window_background</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="android:windowLightStatusBar">@bool/light_system_bars</item>
+        <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowDisablePreview">@bool/disable_starting_window</item>
         <item name="postSplashScreenTheme">@style/Theme.TextGrab</item>
     </style>
@@ -23,15 +50,20 @@
         <item name="android:layout_marginTop">24dp</item>
         <item name="android:layout_marginBottom">8dp</item>
         <item name="android:paddingHorizontal">16dp</item>
+        <item name="android:textColor">#5EEAD4</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
     <style name="ListItemCard" parent="Widget.Material3.ListItemCardView.Segmented">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginBottom">2dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
-        <item name="cardBackgroundColor">?attr/colorSurfaceContainerHigh</item>
+        <item name="cardBackgroundColor">#17FFFFFF</item>
+        <item name="strokeColor">#29FFFFFF</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="cardCornerRadius">18dp</item>
     </style>
 
     <style name="ListItemRow">
@@ -40,17 +72,21 @@
         <item name="android:minHeight">56dp</item>
         <item name="android:orientation">horizontal</item>
         <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingHorizontal">16dp</item>
+        <item name="android:paddingVertical">8dp</item>
     </style>
 
     <style name="ListItemLeadingIcon" parent="Widget.Material3.ImageView.ListItem.LeadingIcon">
         <item name="android:layout_width">24dp</item>
         <item name="android:layout_height">24dp</item>
+        <item name="android:tint">#5EEAD4</item>
     </style>
 
     <style name="ListItemTrailingIcon" parent="Widget.Material3.ImageView.ListItem.TrailingIcon">
         <item name="android:layout_width">24dp</item>
         <item name="android:layout_height">24dp</item>
         <item name="android:layout_marginStart">8dp</item>
+        <item name="android:tint">#64748B</item>
     </style>
 
     <style name="ListItemTextGroup">
@@ -64,10 +100,14 @@
     <style name="ListItemLabel" parent="Widget.Material3.TextView.ListItem.LabelText">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">#F8FAFC</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
     <style name="ListItemSupportingText" parent="Widget.Material3.TextView.ListItem.SupportingText">
+        <item name="android:textSize">16sp</item>
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">#94A3B8</item>
     </style>
 </resources>

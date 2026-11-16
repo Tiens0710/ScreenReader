@@ -1,5 +1,7 @@
 package com.arslan.textgrab
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -22,7 +24,7 @@ class LanguagePacksSheet(
     private val activity: AppCompatActivity,
     private val onChanged: () -> Unit,
 ) {
-    private val dialog = BottomSheetDialog(activity)
+    private val dialog = BottomSheetDialog(activity, R.style.Theme_TextGrab_BottomSheet)
     private val list: LinearLayout
     private var downloaded: Set<String> = emptySet()
 
@@ -36,6 +38,8 @@ class LanguagePacksSheet(
 
     fun show() {
         dialog.show()
+        // Make dialog window transparent so glass layout background shows through
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         refresh()
     }
 

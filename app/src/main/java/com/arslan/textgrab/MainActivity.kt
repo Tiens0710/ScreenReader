@@ -3,12 +3,15 @@ package com.arslan.textgrab
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.RectF
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.view.View
 import android.widget.TextView
 import androidx.activity.addCallback
@@ -32,6 +35,7 @@ import com.arslan.textgrab.databinding.ActivityMainBinding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 
@@ -51,6 +55,8 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
         private const val TOOLBAR_SLIDE = 0.4f
 
         private const val TOOLBAR_SLIDE_FALLBACK_PX = 96
+
+        private const val SPEECH_CHUNK_SIZE = 3500
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -59,6 +65,10 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
     private var launchedWithImage = false
     private var translateJob: Job? = null
     private var ocrJob: Job? = null
+    private var textToSpeech: TextToSpeech? = null
+    private var speechReady = false
+    private var speechActive = false
+    private var lastSpeechUtteranceId: String? = null
 
     private var contentReady = false
 
@@ -73,6 +83,10 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
     private var launchedForCamera = false
     private var cameraOpen = false
     private var viewingCameraPhoto = false
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(App.localizedContext(newBase))
+    }
 
     private val takePhoto =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -105,6 +119,7 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
         enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        initializeSpeech()
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val bars = insets.getInsets(
@@ -129,6 +144,15 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
         binding.btnCamera.isVisible =
             packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)
         binding.btnCamera.setOnClickListener { launchCamera() }
+        binding.btnScan.setOnClickListener {
+            startActivity(Intent(this, LiveActivity::class.java))
+        }
+        binding.btnAdvanced.setOnClickListener {
+            binding.advancedGroup.isVisible = !binding.advancedGroup.isVisible
+            binding.btnAdvanced.setText(
+                if (binding.advancedGroup.isVisible) R.string.home_settings_close else R.string.home_settings_open
+            )
+        }
         OcrEngine.warmUp()
 
         binding.btnAccessibility.setOnClickListener {
@@ -171,6 +195,9 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
         binding.btnTranslateAll.setOnLongClickListener {
             chooseTargetLanguage()
             true
+        }
+        binding.btnSpeak.setOnClickListener {
+            if (speechActive) stopSpeech() else readAloud()
         }
 
         binding.toolbarCopy.setOnClickListener {
@@ -222,12 +249,13 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
     }
 
     private fun refreshSetup() {
-        binding.btnAccessibility.isVisible = ScreenCapture.supported && !ScreenCapture.isEnabled(this)
+        binding.btnAccessibility.isVisible = false
         binding.btnSetAssistant.isVisible = !isAssistantApp()
-        val needsSetup = binding.btnAccessibility.isVisible || binding.btnSetAssistant.isVisible
+        val needsSetup = binding.btnAccessibility.isVisible
+        binding.btnScan.setText(R.string.live_open)
         binding.setupHeader.isVisible = needsSetup
         binding.setupCard.isVisible = needsSetup
-        applySegmentShapes(binding.btnAccessibility, binding.btnSetAssistant)
+        applySegmentShapes(binding.btnAccessibility)
     }
 
     /** Gives a segmented list its M3 first/middle/last corner shapes for the rows in view. */
@@ -252,6 +280,12 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
         }
 
         binding.rowLanguagePacks.isVisible = !engine.isCloud
+        applySegmentShapes(
+            binding.btnSetAssistant,
+            binding.rowEngine,
+            binding.rowLanguagePacks,
+            binding.adbRow
+        )
         lifecycleScope.launch {
             val count = runCatching { Translator.downloadedLanguages().size }.getOrNull() ?: return@launch
             binding.textLanguagePacks.text = getString(R.string.language_packs_summary, count)
@@ -266,6 +300,8 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
 
     override fun onDestroy() {
         clearViewerContent()
+        textToSpeech?.shutdown()
+        textToSpeech = null
         super.onDestroy()
     }
 
@@ -471,6 +507,7 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
     }
 
     private fun clearViewerContent() {
+        stopSpeech()
         ocrJob?.cancel()
         ocrJob = null
         resetTranslation()
@@ -504,6 +541,115 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
 
         clearViewerContent()
         if (launchedWithImage) finish() else showHome()
+    }
+
+    private fun initializeSpeech() {
+        textToSpeech = TextToSpeech(this) { status ->
+            if (status != TextToSpeech.SUCCESS) return@TextToSpeech
+
+            val engine = textToSpeech ?: return@TextToSpeech
+            val preferred = engine.setLanguage(Locale.getDefault())
+            speechReady = preferred >= TextToSpeech.LANG_AVAILABLE
+            if (!speechReady) {
+                speechReady = engine.setLanguage(Locale.US) >= TextToSpeech.LANG_AVAILABLE
+            }
+
+            engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {
+                    runOnUiThread { setSpeechActive(true) }
+                }
+
+                override fun onDone(utteranceId: String?) {
+                    if (utteranceId == lastSpeechUtteranceId) {
+                        runOnUiThread { setSpeechActive(false) }
+                    }
+                }
+
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?) {
+                    if (utteranceId == lastSpeechUtteranceId) {
+                        runOnUiThread { setSpeechActive(false) }
+                    }
+                }
+
+                override fun onStop(utteranceId: String?, interrupted: Boolean) {
+                    runOnUiThread { setSpeechActive(false) }
+                }
+            })
+        }
+    }
+
+    private fun readAloud() {
+        val engine = textToSpeech
+        if (!speechReady || engine == null) {
+            Snackbar.make(binding.root, R.string.speech_unavailable, Snackbar.LENGTH_LONG).show()
+            return
+        }
+
+        val selected = binding.ocrView.selectedText?.takeIf { it.isNotBlank() }
+        val text = selected ?: currentResult?.let { result ->
+            val translations = binding.ocrView.translations
+            if (translations == null) {
+                result.fullText
+            } else {
+                result.lineTexts.mapIndexed { index, original ->
+                    translations.getOrNull(index)?.takeIf { it.isNotBlank() } ?: original
+                }.joinToString("\n")
+            }
+        }
+        if (text.isNullOrBlank()) {
+            Snackbar.make(binding.root, R.string.no_text_found, Snackbar.LENGTH_SHORT).show()
+            return
+        }
+
+        val chunks = splitSpeechText(text)
+        val utterancePrefix = "textgrab-${System.currentTimeMillis()}"
+        lastSpeechUtteranceId = "$utterancePrefix-${chunks.lastIndex}"
+        chunks.forEachIndexed { index, chunk ->
+            val result = engine.speak(
+                chunk,
+                if (index == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD,
+                Bundle(),
+                "$utterancePrefix-$index",
+            )
+            if (result == TextToSpeech.ERROR) {
+                stopSpeech()
+                Snackbar.make(binding.root, R.string.speech_unavailable, Snackbar.LENGTH_LONG).show()
+                return
+            }
+        }
+        setSpeechActive(true)
+    }
+
+    private fun splitSpeechText(text: String): List<String> {
+        val chunks = ArrayList<String>()
+        var start = 0
+        while (start < text.length) {
+            var end = min(start + SPEECH_CHUNK_SIZE, text.length)
+            if (end < text.length) {
+                val boundary = text.lastIndexOfAny(charArrayOf('\n', '.', '!', '?', ' ', '\t'), end - 1)
+                if (boundary > start) end = boundary + 1
+            }
+            text.substring(start, end).trim().takeIf { it.isNotEmpty() }?.let(chunks::add)
+            start = end
+        }
+        return chunks
+    }
+
+    private fun stopSpeech() {
+        textToSpeech?.stop()
+        setSpeechActive(false)
+    }
+
+    private fun setSpeechActive(active: Boolean) {
+        if (!::binding.isInitialized || isDestroyed) return
+        speechActive = active
+        binding.btnSpeak.isChecked = active
+        binding.btnSpeak.setIconResource(
+            if (active) R.drawable.ic_volume_off else R.drawable.ic_volume_up
+        )
+        binding.btnSpeak.contentDescription =
+            getString(if (active) R.string.stop_reading else R.string.read_aloud)
     }
 
     override fun onSelectionChanged(text: String?, anchor: RectF?) {
