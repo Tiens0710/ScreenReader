@@ -2,7 +2,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Glass BottomSheetDialog theme: transparent window so glass layout shows -->
-    <style name="Theme.TextGrab.BottomSheet" parent="Theme.Material3.BottomSheetDialog">
+    <style name="Theme.TextGrab.BottomSheet" parent="Theme.Material3.DayNight.BottomSheetDialog">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="bottomSheetStyle">@style/GlassBottomSheetStyle</item>
         <item name="colorSurface">#00000000</item>
