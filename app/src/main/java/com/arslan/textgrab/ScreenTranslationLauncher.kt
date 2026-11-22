@@ -4,15 +4,20 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.text.InputType
+import android.text.method.PasswordTransformationMethod
 import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
+import android.widget.FrameLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -48,7 +53,6 @@ internal class ScreenTranslationLauncher(
             return
         }
         if (waitingForOverlay?.isActive == true) return
-        runCatching { GeminiCredentials.importIfPresent(activity) }
         if (GeminiCredentials.read(activity).isBlank()) {
             editKey { start() }
             return
@@ -102,16 +106,46 @@ internal class ScreenTranslationLauncher(
     }
 
     fun editKey(onSaved: () -> Unit = {}) {
+        val density = activity.resources.displayMetrics.density
+        fun dp(value: Int) = (value * density).toInt()
         val input = EditText(activity).apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            hint = activity.getString(R.string.live_key_hint)
             isSingleLine = true
-            importantForAutofill = android.view.View.IMPORTANT_FOR_AUTOFILL_NO
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            transformationMethod = PasswordTransformationMethod.getInstance()
+            typeface = Typeface.DEFAULT
+            hint = activity.getString(R.string.live_key_hint)
+            isSaveEnabled = false
+            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            textSize = 16f
+            setTextColor(Color.rgb(248, 252, 249))
+            setHintTextColor(Color.rgb(180, 204, 197))
+            minHeight = dp(52)
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(26, 52, 48))
+                setStroke(dp(1), Color.rgb(103, 146, 134))
+                cornerRadius = dp(12).toFloat()
+            }
+            setPaddingRelative(dp(14), dp(10), dp(14), dp(10))
         }
-        val dialog = MaterialAlertDialogBuilder(activity).setTitle(R.string.live_key_title).setView(input)
+        val form = FrameLayout(activity).apply {
+            setPaddingRelative(dp(24), dp(6), dp(24), dp(10))
+            addView(input, FrameLayout.LayoutParams(-1, -2))
+        }
+        val dialog = MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.live_key_title)
+            .setMessage(R.string.live_key_instructions)
+            .setBackground(GradientDrawable().apply {
+                setColor(Color.rgb(15, 35, 32))
+                cornerRadius = dp(24).toFloat()
+            })
+            .setView(form)
             .setNegativeButton(R.string.home_cancel, null).setPositiveButton(R.string.engine_save, null).create()
+        dialog.window?.let { window ->
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE or WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            window.setDimAmount(.55f)
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        }
         dialog.setOnShowListener {
-            dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
             dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
                 val value = input.text.toString().trim()
                 if (value.isBlank()) {

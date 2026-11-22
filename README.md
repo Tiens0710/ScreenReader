@@ -1,6 +1,6 @@
 # Screen Reader
 
-Screen Reader is an Android app that translates on-screen text into Vietnamese and reads it aloud. Tap the floating button on the page you want to translate. Screen Reader highlights each original line as it reads the translation, then moves on to the next line.
+Screen Reader is an Android app that translates on-screen text into Vietnamese and reads it aloud. Tap the floating button, then drag around the text you want to hear.
 
 ## Why I built Screen Reader
 
@@ -15,12 +15,13 @@ I built Screen Reader for my mom. She doesn't know how to read, and I wanted her
 ## Quick start
 
 1. Open Screen Reader and tap **Translate screen** (**Dịch màn hình**) on the home screen.
-2. Follow the prompts to enter a Gemini API key if needed, allow the floating button to appear over other apps, and approve Android's screen-sharing request. Select **Entire screen** if Android asks what to share.
-3. Open the page you want to translate. Tap the round Screen Reader icon to start. Drag the button to reposition it.
-4. A spinner shows when Screen Reader is waiting. During playback, the current source line gets a mint outline and a waveform at the top moves with the voice. Tap the spinner or stop icon to cancel the current reading.
-5. To remove the floating button and end screen sharing, tap **Disable Translate button** in the Screen Reader notification or open **Settings → Screen translation settings** in the app.
+2. On first use, paste your Gemini API key into the **Gemini API key** dialog and tap **Save**. Put the key in the app after installing it. Never add a key to the source code, Gradle configuration, or APK.
+3. Allow the floating button to appear over other apps and approve Android's screen-sharing request. Select **Entire screen** if Android asks what to share.
+4. Open the page you want to translate. Tap the round Screen Reader icon, drag a rectangle around the text, and release to start. Drag the button itself to reposition it.
+5. A spinner shows when Screen Reader is waiting. During playback, the recognized text in the selected area gets a mint outline. Tap the spinner or stop icon to cancel the current reading.
+6. To remove the floating button and end screen sharing, tap **Disable Translate button** in the Screen Reader notification or open **Settings → Screen translation settings** in the app.
 
-You can change the key under **Settings → Screen translation settings → Settings for a helper → Gemini connection settings**. Screen translation needs an internet connection and a Gemini API key with access to the Live model configured in this build. Requests use the configured key's quota and billing.
+To add or replace your key manually, tap **Enter Gemini key** (**Nhập khóa Gemini**) or **Change Gemini key** (**Đổi khóa Gemini**) just below **Translate screen** on the home screen. Screen translation needs an internet connection and a Gemini API key with access to the Live model configured in this build. Requests use the configured key's quota and billing.
 
 ## Read text from an image
 
@@ -30,8 +31,8 @@ Image recognition runs on the device. The default image translation engine uses 
 
 ## Screen translation and privacy
 
-- Each tap captures one frame and recognizes text locally with PP-OCRv5 Mobile Latin. ML Kit Latin is the fallback.
-- Screen Reader sends the recognized text to Gemini Live over a WebSocket. The app sends one line at a time and plays the returned Vietnamese audio using the Zephyr voice. The screenshots themselves stay in memory on the device.
+- Each selection captures one frame and recognizes text only inside the selected area with PP-OCRv5 Mobile Latin. ML Kit Latin is the fallback.
+- Screen Reader sends the selected area's recognized text to Gemini Live in one request and plays the returned Vietnamese audio using the Zephyr voice. The screenshots themselves stay in memory on the device.
 - The screen-sharing session stays active while the floating button is enabled. Capture, recognition, and Gemini requests start on demand. The screen translation flow does not use the microphone.
 - Screen Reader encrypts the Gemini API key with Android Keystore and stores it in private app storage excluded from backups. Supply your own key on each installation and keep it out of the repository.
 - Android can block screen capture or hide overlays on protected screens. Recognition quality depends on the text size, contrast, and script. If a screen contains more than 8,000 recognized characters, open a smaller section and try again.

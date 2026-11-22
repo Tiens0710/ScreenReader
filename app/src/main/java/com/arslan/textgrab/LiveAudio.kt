@@ -15,7 +15,8 @@ import kotlin.concurrent.thread
 class LiveAudio(
     private val onRegion: (List<android.graphics.RectF>) -> Unit = {},
     private val onLevel: (Float) -> Unit = {},
-    private val onIdle: () -> Unit = {}
+    private val onIdle: () -> Unit = {},
+    private val onError: () -> Unit = {},
 ) {
     private data class Chunk(val generation: Int, val bytes: ByteArray, val regions: List<android.graphics.RectF>)
     private val output = LinkedBlockingQueue<Chunk>(128)
@@ -45,10 +46,17 @@ class LiveAudio(
         .setAudioFormat(AudioFormat.Builder().setSampleRate(24_000)
             .setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
         .setBufferSizeInBytes(AudioTrack.getMinBufferSize(24_000, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
-            .coerceAtLeast(9_600)).setTransferMode(AudioTrack.MODE_STREAM).build()
+            .coerceAtLeast(9_600)).setTransferMode(AudioTrack.MODE_STREAM).build().also { output ->
+            try {
+                check(output.state == AudioTrack.STATE_INITIALIZED)
+                output.play()
+            } catch (error: Exception) {
+                runCatching { output.release() }
+                throw error
+            }
+        }
     private val playbackThread = thread(name = "GeminiLiveAudio") {
         try {
-            track.play()
             var current: Chunk? = null
             var offset = 0
             while (!stopped) {
@@ -70,7 +78,7 @@ class LiveAudio(
                             writtenFrames += written / 2
                             offset += written
                             if (offset >= chunk.bytes.size) current = null
-                        } else if (written < 0) { current = null }
+                        } else if (written < 0) { error("AudioTrack write failed ($written)") }
                     }
                     val position = presentationPosition()
                     while (cues.firstOrNull()?.let { it.end <= position } == true) cues.removeFirst()
@@ -86,8 +94,11 @@ class LiveAudio(
                 }
                 Thread.sleep(if (hasPendingPlayback) 10 else 40)
             }
-        } catch (_: Exception) {
-            // Audio teardown can race with Android stopping the projection.
+        } catch (error: Exception) {
+            if (!stopped) {
+                android.util.Log.w("ScreenTranslate", "Audio output stopped (${error.javaClass.simpleName})")
+                onError()
+            }
         } finally {
             hasPendingPlayback = false
             activeRegions = emptyList()

@@ -32,7 +32,6 @@ class LiveActivity : AppCompatActivity() {
             view.updatePadding(top = bars.top, bottom = bars.bottom)
             insets
         }
-        runCatching { GeminiCredentials.importIfPresent(this) }
         refreshKeyStatus()
         binding.btnLiveBack.setOnClickListener { finish() }
         binding.btnLiveKey.setOnClickListener { translationLauncher.editKey(::refreshKeyStatus) }

@@ -7,7 +7,9 @@ import android.content.pm.ServiceInfo
 import android.graphics.*
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
+import android.media.AudioAttributes
 import android.media.ImageReader
+import android.media.MediaPlayer
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.*
@@ -16,6 +18,8 @@ import android.view.*
 import android.widget.*
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
+import java.io.File
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 /** No capture timer, automatic OCR, or network connection. Work starts only on a tap. */
@@ -33,10 +37,13 @@ class ScreenTranslationService : Service() {
     private var reader: ImageReader? = null
     private var bubble: TranslationBubble? = null
     private var highlight: View? = null
+    private var regionPicker: View? = null
     private var speakingWave: SpeakingWaveView? = null
     private var lines = emptyList<CapturedLine>()
-    private var lineIndex = 0
-    private var lineTimeout: Runnable? = null
+    private var requestTimeout: Runnable? = null
+    private var emptyAudioRetry = false
+    private var fallbackRecording: TranslationRecording? = null
+    private var fallbackPlayer: MediaPlayer? = null
     private var responseComplete = false
     private var connectionReady = false
     private var requestSent = false
@@ -88,6 +95,7 @@ class ScreenTranslationService : Service() {
                         val oldWidth = width; val oldHeight = height
                         setSize(w, h)
                         if (width != oldWidth || height != oldHeight) {
+                            if (regionPicker != null) dismissRegionPicker()
                             if (busy) fail(generation, "Màn hình vừa xoay. Chạm Dịch để thử lại.")
                             display?.resize(width, height, resources.displayMetrics.densityDpi)
                         }
@@ -115,19 +123,97 @@ class ScreenTranslationService : Service() {
         height = (h * scale).roundToInt().coerceAtLeast(1)
     }
 
-    private fun capture() {
-        if (closing) return
+    private fun chooseRegion() {
+        if (closing || regionPicker != null) return
         if (busy) {
             finishRequest()
-            updateStatus("Đã dừng. Chạm Dịch để đọc lại.")
+            updateStatus("Đã dừng. Chạm Dịch để chọn vùng khác.")
             return
         }
-        if (LiveSession.appVisible) { updateStatus("Mở trang cần dịch, rồi chạm nút Dịch nổi trên màn hình."); return }
+        if (LiveSession.appVisible) { updateStatus("Mở trang cần dịch rồi chạm nút Dịch nổi."); return }
+        val key = GeminiCredentials.read(this)
+        if (key.isBlank()) {
+            Toast.makeText(this, "Hãy nhập khóa Gemini trong Screen Reader.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val picker = FrameLayout(this)
+        picker.addView(ScreenRegionSelectionView(this) { region ->
+            dismissRegionPicker(showBubble = false)
+            capture(region, key)
+        }, FrameLayout.LayoutParams(-1, -1))
+        val controls = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(4), dp(6), dp(4))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(15, 44, 39))
+                cornerRadius = dp(16).toFloat()
+            }
+            addView(TextView(context).apply {
+                text = "Kéo để khoanh vùng chữ"
+                textSize = 16f
+                setTextColor(Color.WHITE)
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(Button(context).apply {
+                text = "Hủy"
+                setTextColor(Color.rgb(165, 242, 205))
+                background = null
+                minHeight = dp(48)
+                setOnClickListener { dismissRegionPicker() }
+            })
+        }
+        val toolbar = FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply {
+            setMargins(dp(16), 0, dp(16), dp(36))
+        }
+        picker.addView(controls, toolbar)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(picker) { _, insets ->
+            val bars = insets.getInsetsIgnoringVisibility(androidx.core.view.WindowInsetsCompat.Type.navigationBars() or
+                androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+            toolbar.bottomMargin = maxOf(bars.bottom, dp(16)) + dp(8)
+            controls.requestLayout()
+            insets
+        }
+        picker.isFocusableInTouchMode = true
+        picker.setOnKeyListener { _, code, event ->
+            if (code != KeyEvent.KEYCODE_BACK) false
+            else {
+                if (event.action == KeyEvent.ACTION_UP) dismissRegionPicker()
+                true
+            }
+        }
+        val params = WindowManager.LayoutParams(-1, -1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT).apply {
+            gravity = Gravity.TOP or Gravity.LEFT
+            title = "${getString(R.string.app_name)} region selection"
+            if (Build.VERSION.SDK_INT >= 30) setFitInsetsTypes(0)
+            if (Build.VERSION.SDK_INT >= 28) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+        runCatching { getSystemService(WindowManager::class.java).addView(picker, params) }
+            .onSuccess {
+                regionPicker = picker
+                bubble?.visibility = View.INVISIBLE
+                picker.requestFocus()
+            }.onFailure {
+                Toast.makeText(this, "Không mở được vùng chọn. Hãy thử trên trang khác.", Toast.LENGTH_LONG).show()
+            }
+    }
+
+    private fun dismissRegionPicker(showBubble: Boolean = true) {
+        removeOverlay(regionPicker)
+        regionPicker = null
+        if (showBubble) bubble?.visibility = View.VISIBLE
+    }
+
+    private fun capture(region: RectF, key: String) {
         val memory = ActivityManager.MemoryInfo()
         getSystemService(ActivityManager::class.java).getMemoryInfo(memory)
-        if (memory.lowMemory) { updateStatus("Máy thiếu bộ nhớ. Đóng bớt ứng dụng rồi thử lại."); return }
-        val key = GeminiCredentials.read(this)
-        if (key.isBlank()) { updateStatus("Chưa có kết nối Gemini. Nhờ người hỗ trợ nhập khóa trong Cài đặt."); return }
+        if (memory.lowMemory) {
+            bubble?.visibility = View.VISIBLE
+            Toast.makeText(this, "Máy thiếu bộ nhớ. Đóng bớt ứng dụng rồi thử lại.", Toast.LENGTH_LONG).show()
+            return
+        }
         val id = ++generation
         busy = true
         tappedAt = SystemClock.elapsedRealtime()
@@ -144,13 +230,18 @@ class ScreenTranslationService : Service() {
                     val image = runCatching { incoming.acquireLatestImage() }.getOrNull()
                         ?: return@setOnImageAvailableListener
                     var bitmap: Bitmap? = null
+                    val left = (region.left * image.width).toInt().coerceIn(0, image.width - 1)
+                    val top = (region.top * image.height).toInt().coerceIn(0, image.height - 1)
+                    val right = ceil(region.right * image.width).toInt().coerceIn(left + 1, image.width)
+                    val bottom = ceil(region.bottom * image.height).toInt().coerceIn(top + 1, image.height)
+                    val crop = Selection(left, top, image.width, image.height)
                     try {
                         val plane = image.planes[0]
                         val paddedWidth = image.width + (plane.rowStride - plane.pixelStride * image.width) / plane.pixelStride
                         val padded = Bitmap.createBitmap(paddedWidth, image.height, Bitmap.Config.ARGB_8888)
                         try {
                             padded.copyPixelsFromBuffer(plane.buffer)
-                            bitmap = Bitmap.createBitmap(padded, 0, 0, image.width, image.height)
+                            bitmap = Bitmap.createBitmap(padded, left, top, right - left, bottom - top)
                         } finally { if (bitmap !== padded) padded.recycle() }
                     } catch (_: Exception) {
                         fail(id, "Không chụp được trang này. Hãy thử lại trên trang khác.")
@@ -161,7 +252,7 @@ class ScreenTranslationService : Service() {
                     android.util.Log.i("ScreenTranslate", "One snapshot acquired; capture surface detached")
                     bubble?.visibility = View.VISIBLE
                     updateStatus("Đang tìm chữ…")
-                    recognize(snapshot, id)
+                    recognize(snapshot, crop, id)
                 }, main)
                 display?.surface = source.surface
                 main.postDelayed({ if (id == generation && reader != null)
@@ -179,7 +270,9 @@ class ScreenTranslationService : Service() {
 
     private data class CapturedLine(val text: String, val box: RectF)
 
-    private fun recognize(snapshot: Bitmap, id: Int) {
+    private data class Selection(val left: Int, val top: Int, val width: Int, val height: Int)
+
+    private fun recognize(snapshot: Bitmap, crop: Selection, id: Int) {
         work.launch {
             val recognized = try {
                 withContext(NonCancellable) {
@@ -199,8 +292,8 @@ class ScreenTranslationService : Service() {
                             !clipped.intersect(0f, 0f, snapshot.width.toFloat(), snapshot.height.toFloat())) {
                             return@mapNotNull null
                         }
-                        line.copy(box = RectF(clipped.left / snapshot.width, clipped.top / snapshot.height,
-                            clipped.right / snapshot.width, clipped.bottom / snapshot.height))
+                        line.copy(box = RectF((crop.left + clipped.left) / crop.width, (crop.top + clipped.top) / crop.height,
+                            (crop.left + clipped.right) / crop.width, (crop.top + clipped.bottom) / crop.height))
                     }
                 }
             } catch (_: Exception) { emptyList() }
@@ -211,11 +304,12 @@ class ScreenTranslationService : Service() {
                     if (closing || id != generation) return@post
                     when {
                         recognized.isEmpty() ->
-                            fail(id, "Không tìm thấy chữ rõ. Hãy phóng to rồi chạm Dịch.")
+                            fail(id, "Không tìm thấy chữ trong vùng đã chọn. Hãy khoanh rộng hơn.")
                         recognized.sumOf { it.text.length + 1 } > 8000 ->
-                            fail(id, "Trang có quá nhiều chữ. Hãy mở từng phần rồi chạm Dịch.")
+                            fail(id, "Vùng có quá nhiều chữ. Hãy khoanh vùng nhỏ hơn.")
                         else -> {
                             lines = recognized
+                            android.util.Log.i("ScreenTranslate", "Recognized ${lines.size} line(s) in selected region")
                             updateStatus("Đang dịch sang tiếng Việt…")
                             sendWhenReady(id)
                         }
@@ -228,34 +322,21 @@ class ScreenTranslationService : Service() {
     }
 
     private fun sendWhenReady(id: Int) {
-        val line = lines.getOrNull(lineIndex) ?: return
-        if (!connectionReady || requestSent) return
-        if (client?.askText("TRANSLATE_SCREEN\n${line.text}") != true) {
+        if (lines.isEmpty() || !connectionReady || requestSent) return
+        val text = lines.joinToString("\n") { it.text }
+        if (client?.askText("TRANSLATE_SCREEN\n$text") != true) {
             fail(id, "Không gửi được nội dung. Hãy chạm Dịch để thử lại.")
             return
         }
         requestSent = true
-        val index = lineIndex
-        android.util.Log.i("ScreenTranslate", "Line ${index + 1}/${lines.size} sent")
-        lineTimeout?.let(main::removeCallbacks)
-        lineTimeout = Runnable {
-            if (id == generation && index == lineIndex) {
-                fail(id, "Dịch lâu quá. Hãy kiểm tra mạng rồi thử lại.")
-            }
-        }.also { main.postDelayed(it, 60_000) }
+        resetTimeout(id)
     }
 
-    private fun advanceAfterPlayback(id: Int) {
-        if (closing || id != generation || !responseComplete || audio?.hasPendingPlayback != false) return
-        clearLinePlayback()
-        lineIndex++
-        if (lineIndex == lines.size) {
-            finishRequest()
-            updateStatus("Đã đọc xong")
-        } else {
-            updateStatus("Đang dịch dòng tiếp theo…")
-            sendWhenReady(id)
-        }
+    private fun resetTimeout(id: Int) {
+        requestTimeout?.let(main::removeCallbacks)
+        requestTimeout = Runnable {
+            if (id == generation) fail(id, "Dịch lâu quá. Hãy kiểm tra mạng rồi thử lại.")
+        }.also { main.postDelayed(it, 60_000) }
     }
 
     private fun connect(id: Int, key: String) {
@@ -273,31 +354,29 @@ class ScreenTranslationService : Service() {
             override fun onTranscript(text: String) {}
             override fun onAudio(bytes: ByteArray) { main.post {
                 if (!isCurrent() || !requestSent || responseComplete || bytes.size < 2) return@post
-                val playback = audio ?: try {
-                    val index = lineIndex
-                    var lastLevelAt = 0L
-                    LiveAudio(onLevel = { level ->
-                        val now = SystemClock.uptimeMillis()
-                        if ((lastLevelAt != 0L || level > 0f) && now - lastLevelAt >= 33) {
-                            lastLevelAt = now
-                            main.post {
-                                if (isCurrent() && index == lineIndex) updateSpeechIndicator(level)
-                            }
-                        }
-                    }, onIdle = { main.post {
-                        if (index == lineIndex) advanceAfterPlayback(id)
-                    } }).also { audio = it }
-                } catch (_: Exception) {
-                    fail(id, "Không mở được âm thanh. Hãy chạm Dịch để thử lại.")
-                    return@post
+                if (audio == null && fallbackRecording == null) startPlayback(id)
+                runCatching { fallbackRecording?.append(bytes) }.onFailure {
+                    fail(id, "Không lưu được âm thanh tạm. Hãy kiểm tra dung lượng máy.")
                 }
-                playback.play(bytes)
+                audio?.play(bytes)
             } }
             override fun onTurnComplete() { main.post {
                 if (!isCurrent() || !requestSent || responseComplete) return@post
+                if (audio == null && fallbackRecording == null && !emptyAudioRetry) {
+                    emptyAudioRetry = true
+                    requestSent = false
+                    android.util.Log.w("ScreenTranslate", "Gemini returned no PCM; retrying once")
+                    sendWhenReady(id)
+                    return@post
+                }
                 responseComplete = true
-                if (audio == null) fail(id, "Chưa nhận được giọng đọc. Hãy chạm Dịch để thử lại.")
-                else advanceAfterPlayback(id)
+                client?.close()
+                client = null
+                when {
+                    fallbackRecording != null -> playFallback(id)
+                    audio != null -> finishAfterPlayback(id)
+                    else -> fail(id, "Gemini không trả về giọng đọc. Hãy thử lại sau.")
+                }
             } }
             override fun onFatal(message: String) { main.post { fail(id, message) } }
             override fun onStatus(message: String) {
@@ -310,19 +389,80 @@ class ScreenTranslationService : Service() {
         }, transcriptLimit = 1)
         client = connection
         connection.connect()
-        lineTimeout = Runnable {
-            if (isCurrent() && !requestSent) fail(id, "Dịch lâu quá. Hãy kiểm tra mạng rồi thử lại.")
-        }.also { main.postDelayed(it, 60_000) }
+        resetTimeout(id)
+    }
+
+    private fun startPlayback(id: Int) {
+        var lastLevelAt = 0L
+        try {
+            audio = LiveAudio(onLevel = { level ->
+                val now = SystemClock.uptimeMillis()
+                if ((lastLevelAt != 0L || level > 0f) && now - lastLevelAt >= 33) {
+                    lastLevelAt = now
+                    main.post { if (id == generation && !closing) updateSpeechIndicator(level) }
+                }
+            }, onIdle = { main.post { finishAfterPlayback(id) } },
+                onError = { main.post { fail(id, "Điện thoại không phát được âm thanh. Hãy thử lại.") } })
+        } catch (error: Exception) {
+            android.util.Log.w("ScreenTranslate", "Could not initialize AudioTrack (${error.javaClass.simpleName}); using MediaPlayer")
+            runCatching { TranslationRecording(File(cacheDir, "selected-region-audio.wav")) }
+                .onSuccess { fallbackRecording = it }
+                .onFailure { fail(id, "Không mở được bộ phát âm thanh. Hãy thử lại.") }
+        }
+    }
+
+    private fun playFallback(id: Int) {
+        val recording = fallbackRecording ?: return
+        try {
+            check(recording.finish())
+            val media = MediaPlayer()
+            fallbackPlayer = media
+            media.apply {
+                setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                setDataSource(recording.file.absolutePath)
+                setOnPreparedListener { player ->
+                    if (id == generation && player === fallbackPlayer) {
+                        runCatching { player.start() }
+                            .onSuccess { showSpeechHighlight() }
+                            .onFailure { fail(id, "Không phát được giọng đọc. Hãy thử lại.") }
+                    }
+                }
+                setOnCompletionListener { finishPlayback(id) }
+                setOnErrorListener { _, _, _ ->
+                    fail(id, "Không phát được giọng đọc. Hãy thử lại.")
+                    true
+                }
+            }
+            media.prepareAsync()
+        } catch (_: Exception) {
+            fail(id, "Không phát được giọng đọc. Hãy thử lại.")
+        }
+    }
+
+    private fun finishAfterPlayback(id: Int) {
+        if (responseComplete && audio?.hasPendingPlayback == false) finishPlayback(id)
+    }
+
+    private fun finishPlayback(id: Int) {
+        if (id != generation || closing) return
+        finishRequest()
+        updateStatus("Đã đọc xong")
     }
 
     private fun updateSpeechIndicator(level: Float) {
-        if (level > 0f && !speechStarted) {
-            speechStarted = true
-            android.util.Log.i("ScreenTranslate", "Reading line ${lineIndex + 1}/${lines.size} after ${SystemClock.elapsedRealtime() - tappedAt} ms")
-            showHighlight(lines[lineIndex].box)
-            updateStatus("Đang đọc tiếng Việt…")
-        }
+        if (level > 0f) showSpeechHighlight()
         speakingWave?.setLevel(level)
+    }
+
+    private fun showSpeechHighlight() {
+        if (speechStarted || lines.isEmpty()) return
+        speechStarted = true
+        val box = RectF(lines.first().box)
+        lines.drop(1).forEach { box.union(it.box) }
+        android.util.Log.i("ScreenTranslate", "Reading selected region after ${SystemClock.elapsedRealtime() - tappedAt} ms")
+        showHighlight(box)
+        updateStatus("Đang đọc tiếng Việt…")
     }
 
     private fun fail(id: Int, message: String) {
@@ -337,18 +477,22 @@ class ScreenTranslationService : Service() {
         busy = false
         client?.close()
         client = null
-        clearLinePlayback()
+        clearPlayback()
         detachCapture()
         lines = emptyList()
-        lineIndex = 0
         connectionReady = false
         bubble?.visibility = View.VISIBLE
         bubble?.show(TranslationBubble.State.READY)
     }
 
-    private fun clearLinePlayback() {
-        lineTimeout?.let(main::removeCallbacks)
-        lineTimeout = null
+    private fun clearPlayback() {
+        requestTimeout?.let(main::removeCallbacks)
+        requestTimeout = null
+        fallbackPlayer?.release()
+        fallbackPlayer = null
+        runCatching { fallbackRecording?.discard() }
+        fallbackRecording = null
+        emptyAudioRetry = false
         audio?.close()
         audio = null
         removeOverlay(highlight)
@@ -372,7 +516,7 @@ class ScreenTranslationService : Service() {
             title = getString(R.string.app_name)
         }
         val button = TranslationBubble(App.localizedContext(this), ::dp).apply {
-            setOnClickListener { capture() }
+            setOnClickListener { chooseRegion() }
         }
         button.setOnTouchListener(object : View.OnTouchListener {
             var x = 0f
@@ -388,6 +532,7 @@ class ScreenTranslationService : Service() {
                         initialX = params.x
                         initialY = params.y
                         moved = false
+                        button.setInteracting(true)
                         view.isPressed = true
                     }
                     MotionEvent.ACTION_MOVE -> {
@@ -404,8 +549,12 @@ class ScreenTranslationService : Service() {
                     MotionEvent.ACTION_UP -> {
                         view.isPressed = false
                         if (!moved) view.performClick()
+                        button.setInteracting(false)
                     }
-                    MotionEvent.ACTION_CANCEL -> view.isPressed = false
+                    MotionEvent.ACTION_CANCEL -> {
+                        view.isPressed = false
+                        button.setInteracting(false)
+                    }
                 }
                 return true
             }
@@ -497,6 +646,7 @@ class ScreenTranslationService : Service() {
 
     override fun onDestroy() {
         closing = true; ++generation; work.cancel(); main.removeCallbacksAndMessages(null)
+        dismissRegionPicker(showBubble = false)
         finishRequest()
         runCatching { display?.release() }; runCatching { projection?.stop() }
         removeOverlay(bubble)

@@ -28,6 +28,12 @@ internal class TranslationBubble(context: Context, private val dp: (Int) -> Int)
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
     private var state: State? = null
+    private var interacting = false
+    private val fadeWhenIdle = Runnable {
+        if (state == State.READY && !interacting) {
+            animate().alpha(.48f).setDuration(240).start()
+        }
+    }
 
     init {
         minimumWidth = dp(48)
@@ -41,9 +47,36 @@ internal class TranslationBubble(context: Context, private val dp: (Int) -> Int)
 
     override fun getAccessibilityClassName(): CharSequence = Button::class.java.name
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        refreshOpacity()
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(fadeWhenIdle)
+        animate().cancel()
+        interacting = false
+        super.onDetachedFromWindow()
+    }
+
+    fun setInteracting(value: Boolean) {
+        interacting = value
+        refreshOpacity()
+    }
+
+    private fun refreshOpacity() {
+        removeCallbacks(fadeWhenIdle)
+        animate().cancel()
+        alpha = 1f
+        if (isAttachedToWindow && state == State.READY && !interacting) {
+            postDelayed(fadeWhenIdle, 3_000)
+        }
+    }
+
     fun show(value: State) {
         if (state == value) return
         state = value
+        refreshOpacity()
         val waiting = value == State.WAITING
         spinner.visibility = if (waiting) View.VISIBLE else View.GONE
         icon.visibility = if (waiting) View.INVISIBLE else View.VISIBLE

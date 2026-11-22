@@ -148,6 +148,12 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
             packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)
         binding.btnCamera.setOnClickListener { launchCamera() }
         binding.btnScan.setOnClickListener { translationLauncher.start() }
+        binding.btnGeminiKey.setOnClickListener {
+            translationLauncher.editKey {
+                refreshGeminiKeyAction()
+                Snackbar.make(binding.root, R.string.live_key_saved, Snackbar.LENGTH_SHORT).show()
+            }
+        }
         binding.btnScreenTranslationSettings.setOnClickListener {
             startActivity(Intent(this, LiveActivity::class.java))
         }
@@ -249,7 +255,14 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
     override fun onResume() {
         super.onResume()
         refreshSetup()
+        refreshGeminiKeyAction()
         refreshTranslationRows()
+    }
+
+    private fun refreshGeminiKeyAction() {
+        val label = if (GeminiCredentials.read(this).isBlank()) R.string.home_gemini_key_add
+            else R.string.home_gemini_key_change
+        binding.btnGeminiKey.setText(label)
     }
 
     override fun onStop() {

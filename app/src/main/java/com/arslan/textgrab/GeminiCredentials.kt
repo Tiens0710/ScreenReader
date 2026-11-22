@@ -43,10 +43,4 @@ object GeminiCredentials {
         String(cipher.doFinal(bytes.copyOfRange(12, bytes.size)), Charsets.UTF_8)
     }.getOrDefault("")
 
-    @Synchronized fun importIfPresent(context: Context) {
-        val input = File(context.filesDir, "gemini-key.import")
-        if (input.exists()) {
-            try { save(context, input.readText().trim()) } finally { input.delete() }
-        }
-    }
 }
