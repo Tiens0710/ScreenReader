@@ -114,7 +114,7 @@
     <string name="live_title">Nút Dịch trên màn hình</string>
     <string name="live_subtitle">Theo dõi màn hình, hiểu nội dung trực tiếp.</string>
     <string name="live_model">Gemini 3.8 Live · trả lời tiếng Việt</string>
-    <string name="live_privacy">Chỉ chụp và gửi chữ đến Google Gemini khi bạn bấm Dịch. Kết quả không tự phát tiếng. Có thể tắt nút Dịch trong ứng dụng hoặc thông báo.</string>
+    <string name="live_privacy">Khi bạn chạm Dịch, TextGrab nhận dạng chữ trên máy rồi gửi chữ đến Gemini để dịch và đọc.</string>
     <string name="live_start">Bật nút Dịch</string>
     <string name="live_stop">Tắt nút Dịch</string>
     <string name="live_pause">Tạm dừng</string>
@@ -139,12 +139,12 @@
     <string name="simple_home_title">Dịch khi bạn cần</string>
     <string name="simple_home_summary">Mở trang cần dịch rồi chạm nút Dịch nổi trên màn hình.</string>
     <string name="simple_screen">Dịch màn hình</string>
-    <string name="simple_screen_hint">Mỗi lần chạm chỉ dịch một lần. Không tự quét hay tự đọc.</string>
+    <string name="simple_screen_hint">Chạm Dịch để khoanh chữ và nghe tiếng Việt.</string>
     <string name="simple_other">Đọc từ ảnh</string>
     <string name="simple_image">Chọn ảnh có sẵn</string>
     <string name="simple_camera">Chụp ảnh để đọc</string>
     <string name="simple_back">Trang chủ</string>
-    <string name="simple_steps">1. Bật nút Dịch và cho phép chia sẻ màn hình.\n2. Mở trang bạn muốn dịch.\n3. Chạm nút Dịch để xem tiếng Việt.</string>
+    <string name="simple_steps">1. Bật nút Dịch và cho phép chia sẻ màn hình.\n2. Mở trang cần dịch rồi chạm Dịch.\n3. Chạm Dừng nếu muốn ngừng đọc.</string>
     <string name="simple_options">Cài đặt cho người hỗ trợ</string>
     <string name="simple_options_close">Ẩn cài đặt</string>
     <string name="tap_enable">Bật nút Dịch</string>

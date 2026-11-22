@@ -2,21 +2,21 @@
 
 ## Personal build
 
-This personal build adds a large Vietnamese interface, a floating tap-to-translate button, and optional read-aloud playback.
+This personal build adds a large Vietnamese interface, a floating tap-to-translate button, and Vietnamese read-aloud playback.
 
 ### Simple interface
 
-The home screen offers screen translation, choosing an image, and taking a photo. The configuration screen uses large text, explicit enable/disable actions, and collapsed connection settings for helpers. The floating button is labeled “Dịch”; results have Nghe đọc, Dịch lại, and Đóng. This is an interface review on an emulator, not a usability study with older adults.
+The home screen offers screen translation, choosing an image, and taking a photo. The configuration screen uses large text, explicit enable/disable actions, and collapsed connection settings for helpers. The floating button shows “Dịch” when ready and “Dừng” while working. This is an interface review on an emulator, not a usability study with older adults.
 
 ### Tap to translate (version 2.2)
 
 Open **Dịch màn hình → Bật nút Dịch**, allow display over other apps, and accept Android screen sharing for the entire display. Open the page you want to translate and tap the floating **Dịch** button. Drag the button to move it. Android may hide app overlays on protected pages such as Settings; protected windows cannot be captured.
 
-Each tap takes one screenshot, detaches the capture surface, runs PaddleOCR Latin locally (ML Kit Latin is a fallback), and sends the recognized text to Gemini for a full Vietnamese translation. No automatic sampling timer, OCR, microphone capture, or Gemini connection runs while idle. The projection permission/foreground notification stays active until you disable the button, but the virtual display has no surface except during a requested capture. Images remain local and are recycled after OCR.
+Each tap takes one screenshot, detaches the capture surface, runs PaddleOCR Latin locally (ML Kit Latin is a fallback), and sends the recognized lines to Gemini in reading order over one Live connection. No automatic sampling timer, OCR, microphone capture, or Gemini connection runs while idle. The projection permission/foreground notification stays active until you disable the button, but the virtual display has no surface except during a requested capture. Images remain local and are recycled after OCR.
 
-Results use large text and three controls: **Nghe đọc**, **Dịch lại**, and **Đóng**. The translation does not speak automatically. Gemini Zephyr audio from that requested translation is stored temporarily as a private bounded WAV file (at most 8 MiB) and played locally only when you tap **Nghe đọc**. **Dịch lại** hides the result before taking a new screenshot. **Đóng** dismisses the result, stops playback, and cancels a pending request. Disable the floating button from the app or ongoing notification to end screen sharing and remove the overlay.
+Gemini streams its Vietnamese translation in the Zephyr voice. TextGrab outlines the current source line when its audio starts and clears the outline before moving to the next line. Tap **Dừng** to cancel the current request or stop playback. Disable the floating button from the app or notification to end screen sharing.
 
-The entire visible screen is translated; selection of a smaller region is not implemented. Screens with over 8000 recognized characters report a limit rather than silently truncating the input. If a long audio reply reaches its size limit, the result says only the first portion is available to hear. API usage is charged to the configured Gemini key.
+Each tap reads the recognized text from the visible screen. The outline corresponds to the captured line currently being read. Screens with over 8000 recognized characters ask you to translate a shorter section. API usage is charged to the configured Gemini key.
 
 API keys are entered once and encrypted using Android Keystore in no-backup private storage. No API key is embedded in the APK or source. Debug devices can provision `files/gemini-key.import`, which is encrypted and deleted when the configuration screen opens. The legacy Live classes remain for reference and their regression tests; the main screen now opens the on-demand service, not the automatic Live service.
 

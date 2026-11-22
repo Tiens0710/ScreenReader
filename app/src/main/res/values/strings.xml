@@ -121,7 +121,7 @@
     <string name="live_title">Floating Translate button</string>
     <string name="live_subtitle">Your screen, understood in real time.</string>
     <string name="live_model">Gemini 3.8 Live · Vietnamese responses</string>
-    <string name="live_privacy">Only captures the screen and sends text to Google Gemini when you tap Translate. Results do not play automatically. Disable the button in the app or notification.</string>
+    <string name="live_privacy">When you tap Translate, TextGrab recognizes text on your device and sends it to Gemini for translation and speech.</string>
     <string name="live_start">Enable Translate button</string>
     <string name="live_stop">Disable Translate button</string>
     <string name="live_pause">Pause</string>
@@ -146,12 +146,12 @@
     <string name="simple_home_title">Translate when you need it</string>
     <string name="simple_home_summary">Open a page, then tap the floating Translate button.</string>
     <string name="simple_screen">Translate screen</string>
-    <string name="simple_screen_hint">One translation per tap. No automatic scanning or speech.</string>
+    <string name="simple_screen_hint">Tap Translate to highlight text and hear it in Vietnamese.</string>
     <string name="simple_other">Read from an image</string>
     <string name="simple_image">Choose an image</string>
     <string name="simple_camera">Take a photo to read</string>
     <string name="simple_back">Home</string>
-    <string name="simple_steps">1. Enable Translate and allow screen sharing.\n2. Open the page you want to translate.\n3. Tap Translate to see Vietnamese.</string>
+    <string name="simple_steps">1. Enable Translate and allow screen sharing.\n2. Open a page and tap Translate.\n3. Tap Stop to end playback.</string>
     <string name="simple_options">Settings for a helper</string>
     <string name="simple_options_close">Hide settings</string>
     <string name="tap_enable">Enable Translate button</string>

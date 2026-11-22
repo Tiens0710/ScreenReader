@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 data class ScreenTranslationState(val running: Boolean = false, val ready: Boolean = false,
-    val status: String = "Bật nút Dịch, rồi mở trang cần dịch", val translation: String = "")
+    val status: String = "Bật nút Dịch, rồi mở trang cần dịch")
 object ScreenTranslationSession {
     private val mutable = MutableStateFlow(ScreenTranslationState())
     val state = mutable.asStateFlow()

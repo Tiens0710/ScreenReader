@@ -81,26 +81,15 @@ class LiveActivity : AppCompatActivity() {
         binding.btnLiveStart.setOnClickListener {
             if (ScreenTranslationSession.state.value.running) command(ScreenTranslationService.STOP) else beginLive()
         }
-        binding.btnLivePause.isVisible = false
         binding.btnLiveMinimize.setOnClickListener { moveTaskToBack(true) }
-        binding.btnLivePanel.setOnClickListener { command(ScreenTranslationService.SHOW); moveTaskToBack(true) }
-        binding.switchVoice.isVisible = false
-        binding.switchMic.isVisible = false
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 ScreenTranslationSession.state.collect { state ->
                     binding.liveStatus.text = state.status
-                    binding.liveTranscript.isVisible = state.translation.isNotBlank()
-                    binding.translationPreviewTitle.isVisible = state.translation.isNotBlank()
-                    binding.liveTranscript.text = state.translation.ifBlank { getString(R.string.live_transcript_empty) }
-                    binding.liveFrames.isVisible = false
                     binding.btnLiveStart.setText(if (state.running) R.string.tap_disable else R.string.tap_enable)
                     binding.btnLiveStart.setBackgroundResource(if (state.running) R.drawable.bg_glass_danger else R.drawable.bg_glass_hero)
                     binding.btnLiveStart.backgroundTintList = null
-                    binding.btnLivePause.isVisible = false
                     binding.btnLiveMinimize.isVisible = state.running
-                    binding.btnLivePanel.isVisible = state.running && state.translation.isNotBlank()
-                    binding.switchMic.isEnabled = !state.running
                     binding.btnLiveKey.isEnabled = !state.running
                     if (!state.running) minimizeWhenReady = false
                     if (minimizeWhenReady && state.running && state.ready) {
