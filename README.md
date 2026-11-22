@@ -1,137 +1,78 @@
-# TextGrab
+# Screen Reader
 
-## Personal build
+Screen Reader is an Android app that translates on-screen text into Vietnamese and reads it aloud. Tap the floating button on the page you want to translate. Screen Reader highlights each original line as it reads the translation, then moves on to the next line.
 
-This personal build adds a large Vietnamese interface, a floating tap-to-translate button, and Vietnamese read-aloud playback.
+## Why I built Screen Reader
 
-### Simple interface
+I built Screen Reader for my mom. She doesn't know how to read, and I wanted her to be able to use her phone more independently. With one tap, she can hear what's on the screen in Vietnamese.
 
-The home screen offers screen translation, choosing an image, and taking a photo. The configuration screen uses large text, explicit enable/disable actions, and collapsed connection settings for helpers. The floating button shows “Dịch” when ready and “Dừng” while working. This is an interface review on an emulator, not a usability study with older adults.
+## Screenshots
 
-### Tap to translate (version 2.2)
+| Home screen | Waiting for a translation | Reading aloud |
+| :---: | :---: | :---: |
+| <img src="screenshots/screen-reader-home.png" width="220" alt="Screen Reader home screen with the Vietnamese Translate screen button"> | <img src="screenshots/screen-reader-loading.png" width="220" alt="Floating Screen Reader button showing a spinner over the sample page"> | <img src="screenshots/screen-reader-playback.png" width="220" alt="Screen Reader highlights the current line and shows the stop button while reading"> |
 
-Open **Dịch màn hình → Bật nút Dịch**, allow display over other apps, and accept Android screen sharing for the entire display. Open the page you want to translate and tap the floating **Dịch** button. Drag the button to move it. Android may hide app overlays on protected pages such as Settings; protected windows cannot be captured.
+## Quick start
 
-Each tap takes one screenshot, detaches the capture surface, runs PaddleOCR Latin locally (ML Kit Latin is a fallback), and sends the recognized lines to Gemini in reading order over one Live connection. No automatic sampling timer, OCR, microphone capture, or Gemini connection runs while idle. The projection permission/foreground notification stays active until you disable the button, but the virtual display has no surface except during a requested capture. Images remain local and are recycled after OCR.
+1. Open Screen Reader and tap **Translate screen** (**Dịch màn hình**) on the home screen.
+2. Follow the prompts to enter a Gemini API key if needed, allow the floating button to appear over other apps, and approve Android's screen-sharing request. Select **Entire screen** if Android asks what to share.
+3. Open the page you want to translate. Tap the round Screen Reader icon to start. Drag the button to reposition it.
+4. A spinner shows when Screen Reader is waiting. During playback, the current source line gets a mint outline and a waveform at the top moves with the voice. Tap the spinner or stop icon to cancel the current reading.
+5. To remove the floating button and end screen sharing, tap **Disable Translate button** in the Screen Reader notification or open **Settings → Screen translation settings** in the app.
 
-Gemini streams its Vietnamese translation in the Zephyr voice. TextGrab outlines the current source line when its audio starts and clears the outline before moving to the next line. Tap **Dừng** to cancel the current request or stop playback. Disable the floating button from the app or notification to end screen sharing.
+You can change the key under **Settings → Screen translation settings → Settings for a helper → Gemini connection settings**. Screen translation needs an internet connection and a Gemini API key with access to the Live model configured in this build. Requests use the configured key's quota and billing.
 
-Each tap reads the recognized text from the visible screen. The outline corresponds to the captured line currently being read. Screens with over 8000 recognized characters ask you to translate a shorter section. API usage is charged to the configured Gemini key.
+## Read text from an image
 
-API keys are entered once and encrypted using Android Keystore in no-backup private storage. No API key is embedded in the APK or source. Debug devices can provision `files/gemini-key.import`, which is encrypted and deleted when the configuration screen opens. The legacy Live classes remain for reference and their regression tests; the main screen now opens the on-demand service, not the automatic Live service.
+Choose an existing image, share one to Screen Reader from another app, or take a photo. You can select, copy, share, translate, or read the recognized text aloud. This image workflow uses Android text-to-speech for playback. For Vietnamese pronunciation, select or install a Vietnamese voice in Android's text-to-speech settings.
 
-### Local image OCR
+Image recognition runs on the device. The default image translation engine uses ML Kit and works offline once the necessary language packs are downloaded. If you choose a cloud translation engine in Settings, it receives the text you ask it to translate.
 
-Tap the speaker to read the selected text, or the full OCR result when nothing is selected.
-When translation is active, it reads the translated text. Speech uses Android's installed
-text-to-speech voice; install a Vietnamese voice in Android's text-to-speech settings for
-Vietnamese pronunciation. Image OCR remains on-device. Gemini Live is the separate cloud-assisted mode.
+## Screen translation and privacy
 
-On Windows, open this folder in Android Studio or build a debug APK with
-`gradlew.bat assembleDebug`. The APK is written to
-`app/build/outputs/apk/debug/app-debug.apk`. Debug builds use the separate package
-`com.arslan.textgrab.personal`, so they can be installed alongside the upstream app.
+- Each tap captures one frame and recognizes text locally with PP-OCRv5 Mobile Latin. ML Kit Latin is the fallback.
+- Screen Reader sends the recognized text to Gemini Live over a WebSocket. The app sends one line at a time and plays the returned Vietnamese audio using the Zephyr voice. The screenshots themselves stay in memory on the device.
+- The screen-sharing session stays active while the floating button is enabled. Capture, recognition, and Gemini requests start on demand. The screen translation flow does not use the microphone.
+- Screen Reader encrypts the Gemini API key with Android Keystore and stores it in private app storage excluded from backups. Supply your own key on each installation and keep it out of the repository.
+- Android can block screen capture or hide overlays on protected screens. Recognition quality depends on the text size, contrast, and script. If a screen contains more than 8,000 recognized characters, open a smaller section and try again.
 
-Select, copy and translate the text of anything on your Android screen. One
-gesture captures the screen, and a moment later every word on it is
-selectable. Like iOS Live Text or Circle to Search, but the recognition runs
-on your device and needs no Google Play services.
+## Build and install
 
-| Capture any screen | Select like native text | Translate in place |
-|---|---|---|
-| ![Captured screen shown as an inset preview](screenshots/capture.png) | ![Two lines selected with handles and a copy toolbar](screenshots/select.png) | ![The same screen translated from German to English](screenshots/translate.png) |
+The project uses Kotlin, Android SDK 36, JDK 17, and the included Gradle wrapper. The minimum Android version declared by the app is Android 8.0 (API 26). The floating translation flow has been exercised on an Android 15 emulator.
 
-## Install
+Open the project folder in Android Studio and run the **app** configuration, or build debug APKs from the repository root.
 
-Download the latest APK from
-[Releases](https://github.com/AhmetCanArslan/TextGrab/releases) and open it on
-your phone. Requires Android 8.0 or newer; screen capture needs Android 11 or
-newer. The APK is about 110 MB because the recognition models are bundled.
+**Windows**
 
-## Setup
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
 
-The home screen lists whatever is still missing and hides each row once it is
-done.
-
-1. **Turn on screen capture.** Tap **Turn on screen capture** and enable
-   *TextGrab screen capture* under accessibility settings. The service only
-   takes screenshots; it cannot read window content.
-2. **Add the tile.** Open quick settings, tap the edit (pencil) button and
-   drag the **OCR screenshot** tile into your tiles.
-3. **Set as assistant app** (optional). Pick TextGrab under *Settings → Apps →
-   Default apps → Digital assistant app* to capture with a long-press on home
-   or the navigation handle. On devices with Circle to Search, turn that off
-   first.
-
-## How to use
-
-**From the screen:** tap the **OCR screenshot** tile or long-press home. Then
-tap a word, or long-press and drag across the text. The floating toolbar
-copies, shares or searches the selection; the top bar acts on the whole
-screen.
-
-**From an image:** share an image to **TextGrab** from any app, or tap
-**Choose image** on the home screen. This needs no setup and no permission.
-
-**From the camera:** tap **Camera** on the home screen, or
-long-press the app icon and pick **Camera**. Point the
-viewfinder at the text (pinch to zoom, tap to focus), press the shutter, and
-the photo opens like any other image: select, copy or translate. The camera
-permission is requested the first time; photos are not kept.
-
-**Translate:** tap the translate button in the top bar and every line is
-replaced in place by its translation. Tap again to show the original;
-long-press to pick the target language. The source language is detected
-automatically.
-
-## Translation engines
-
-Choose one under **Translation engine** on the home screen.
-
-| Engine | Runs | Notes |
-|---|---|---|
-| On-device (ML Kit) | On your device | The default. Free and private. Language packs are about 30 MB each and work offline once downloaded. |
-| DeepL | DeepL's API | Natural wording, strong on European languages. |
-| Google Cloud Translation | Google's API | The widest language coverage. |
-| LLM (OpenAI-compatible) | Any `/chat/completions` endpoint | Presets for OpenAI, Gemini, DeepSeek, OpenRouter, Groq, Mistral, Together, Ollama and LM Studio. |
-| Claude (Anthropic) | Anthropic's API | Good with interface wording and short labels. |
-
-Cloud engines need your own API key; the **Test** button checks it before you
-save.
-
-## Privacy
-
-- Text recognition always runs on the device.
-- With the on-device translation engine, the internet is used only to
-  download language packs. Recognized text never leaves the device.
-- With a cloud engine, the text of the screen you translate is sent to the
-  service you configured, and only when you tap translate.
-- Captured screens are held in memory only and are never saved.
-- The app requests no storage, photo or camera permission.
-
-## Supported languages
-
-**Recognition:** Latin-script languages (English, German, French, Spanish,
-Turkish, Vietnamese and many more), plus Chinese, Japanese and Korean. Arabic,
-Cyrillic and Devanagari are not recognized yet.
-
-**Translation:** about 60 languages on device; cloud engines cover whatever
-the service supports.
-
-**Capture** can also be triggered from adb:
+**macOS and Linux**
 
 ```sh
-adb shell am broadcast --receiver-foreground -a com.arslan.textgrab.action.CAPTURE -p com.arslan.textgrab
+./gradlew :app:assembleDebug
 ```
+
+Gradle places the APKs in `app/build/outputs/apk/debug/`. Use the file that matches your device.
+
+| Device architecture | APK |
+|---|---|
+| ARM64 Android device | `app-arm64-v8a-debug.apk` |
+| 32-bit ARM Android device | `app-armeabi-v7a-debug.apk` |
+| x86_64 Android emulator | `app-x86_64-debug.apk` |
+| x86 Android emulator | `app-x86-debug.apk` |
+
+For example, install the ARM64 APK on a connected device with ADB.
+
+```sh
+adb install -r app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+```
+
+Debug builds use the application ID `com.arslan.textgrab.personal`.
 
 ## Credits and license
 
-TextGrab is a fork of [notune/TextGrab](https://github.com/notune/TextGrab).
-It adds instant screen capture, the assistant gesture, in-place translation,
-Chinese, Japanese and Korean recognition, and a redesigned interface. It uses
-its own package name, `com.arslan.textgrab`, so it installs next to the
-original.
+This project is based on [AhmetCanArslan/TextGrab](https://github.com/AhmetCanArslan/TextGrab), a fork of [notune/TextGrab](https://github.com/notune/TextGrab).
 
-The app source code is licensed under the [MIT License](LICENSE). Photo OCR uses ML Kit under the
-[ML Kit Terms of Service](https://developers.google.com/ml-kit/terms). The bundled PaddleOCR Android
-SDK and PP-OCRv5 Mobile Latin model are Apache-2.0 licensed; see [ppocr-sdk/LICENSE](ppocr-sdk/LICENSE).
+The app source is available under the [MIT License](LICENSE). The bundled PaddleOCR Android SDK and PP-OCRv5 Mobile Latin model are distributed under the [Apache 2.0 License](ppocr-sdk/LICENSE).

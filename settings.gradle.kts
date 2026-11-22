@@ -13,6 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TextGrab"
+rootProject.name = "Screen Reader"
 include(":app")
 include(":ppocr-sdk")

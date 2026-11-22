@@ -4,7 +4,7 @@
     <string name="tile_label">OCR Screenshot</string>
 
     <string name="home_subtitle">Erkennung und Übersetzung laufen lokal auf dem Gerät — ohne Google-Dienste. Internet wird nur zum Laden der Sprachpakete genutzt.</string>
-    <string name="home_hint">Teile ein beliebiges Bild mit TextGrab oder füge die Kachel „OCR Screenshot" zu den Schnelleinstellungen hinzu: Kachel antippen, Text markieren.</string>
+    <string name="home_hint">Teile ein beliebiges Bild mit Screen Reader oder füge die Kachel „OCR Screenshot" zu den Schnelleinstellungen hinzu: Kachel antippen, Text markieren.</string>
     <string name="pick_image">Bild auswählen</string>
     <string name="camera">Kamera</string>
     <string name="shortcut_camera_long">Text mit Kamera erfassen</string>
@@ -57,9 +57,9 @@
     <string name="language_delete_confirm">Sprachpaket %1$s löschen?</string>
     <string name="language_download_failed">Download fehlgeschlagen. %1$s</string>
     <string name="a11y_setup">Bildschirmaufnahme aktivieren</string>
-    <string name="a11y_setup_summary">Aktiviere TextGrab in den Bedienungshilfen, damit die Kachel den Bildschirm aufnehmen kann</string>
-    <string name="a11y_label">TextGrab Bildschirmaufnahme</string>
-    <string name="a11y_description">Nimmt einen Screenshot auf, wenn du die Kachel antippst oder die Assistenz-Geste nutzt, und hält TextGrab aktiv, damit Aufnahmen sofort öffnen. Es empfängt keine Bedienungshilfe-Ereignisse, liest keine Fensterinhalte und beobachtet keine Eingaben.</string>
-    <string name="a11y_not_ready">Bildschirmaufnahme ist aus. Öffne TextGrab, um sie zu aktivieren</string>
+    <string name="a11y_setup_summary">Aktiviere Screen Reader in den Bedienungshilfen, damit die Kachel den Bildschirm aufnehmen kann</string>
+    <string name="a11y_label">Screen Reader Bildschirmaufnahme</string>
+    <string name="a11y_description">Nimmt einen Screenshot auf, wenn du die Kachel antippst oder die Assistenz-Geste nutzt, und hält Screen Reader aktiv, damit Aufnahmen sofort öffnen. Es empfängt keine Bedienungshilfe-Ereignisse, liest keine Fensterinhalte und beobachtet keine Eingaben.</string>
+    <string name="a11y_not_ready">Bildschirmaufnahme ist aus. Öffne Screen Reader, um sie zu aktivieren</string>
     <string name="capture_unsupported">Bildschirmaufnahme erfordert Android 11 oder neuer</string>
 </resources>

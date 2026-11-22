@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.*
-import android.graphics.drawable.GradientDrawable
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.ImageReader
@@ -32,7 +31,7 @@ class ScreenTranslationService : Service() {
     private var projection: MediaProjection? = null
     private var display: VirtualDisplay? = null
     private var reader: ImageReader? = null
-    private var bubble: TextView? = null
+    private var bubble: TranslationBubble? = null
     private var highlight: View? = null
     private var speakingWave: SpeakingWaveView? = null
     private var lines = emptyList<CapturedLine>()
@@ -344,8 +343,7 @@ class ScreenTranslationService : Service() {
         lineIndex = 0
         connectionReady = false
         bubble?.visibility = View.VISIBLE
-        bubble?.text = "Dịch"
-        bubble?.contentDescription = "Dịch và đọc màn hình"
+        bubble?.show(TranslationBubble.State.READY)
     }
 
     private fun clearLinePlayback() {
@@ -371,24 +369,9 @@ class ScreenTranslationService : Service() {
             gravity = Gravity.RIGHT or Gravity.TOP
             x = dp(12)
             y = dp(140)
-            title = "TextGrab"
+            title = getString(R.string.app_name)
         }
-        val button = TextView(App.localizedContext(this)).apply {
-            gravity = Gravity.CENTER
-            text = "Dịch"
-            contentDescription = "Dịch và đọc màn hình"
-            textSize = 18f
-            setTextColor(Color.WHITE)
-            setTypeface(typeface, Typeface.BOLD)
-            minimumWidth = dp(76)
-            minimumHeight = dp(52)
-            setPadding(dp(14), dp(8), dp(14), dp(8))
-            background = GradientDrawable().apply {
-                setColor(Color.rgb(20, 52, 48))
-                setStroke(dp(1), Color.rgb(90, 135, 125))
-                cornerRadius = dp(18).toFloat()
-            }
-            isFocusable = true
+        val button = TranslationBubble(App.localizedContext(this), ::dp).apply {
             setOnClickListener { capture() }
         }
         button.setOnTouchListener(object : View.OnTouchListener {
@@ -405,10 +388,12 @@ class ScreenTranslationService : Service() {
                         initialX = params.x
                         initialY = params.y
                         moved = false
+                        view.isPressed = true
                     }
                     MotionEvent.ACTION_MOVE -> {
                         if (kotlin.math.abs(event.rawX - x) + kotlin.math.abs(event.rawY - y) > dp(8)) moved = true
                         if (moved) {
+                            view.isPressed = false
                             params.x = (initialX - (event.rawX - x).toInt()).coerceIn(
                                 0, (resources.displayMetrics.widthPixels - view.width).coerceAtLeast(0))
                             params.y = (initialY + (event.rawY - y).toInt()).coerceIn(
@@ -416,7 +401,11 @@ class ScreenTranslationService : Service() {
                             windows.updateViewLayout(view, params)
                         }
                     }
-                    MotionEvent.ACTION_UP -> if (!moved) view.performClick()
+                    MotionEvent.ACTION_UP -> {
+                        view.isPressed = false
+                        if (!moved) view.performClick()
+                    }
+                    MotionEvent.ACTION_CANCEL -> view.isPressed = false
                 }
                 return true
             }
@@ -427,20 +416,36 @@ class ScreenTranslationService : Service() {
 
     private fun showHighlight(box: RectF) {
         val view = object : View(this) {
-            private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+            private val density = resources.displayMetrics.density
+            private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.argb(28, 76, 222, 174)
+            }
+            private val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 1.5f * density
+                color = Color.rgb(0, 139, 112)
+            }
             private val rect = RectF()
 
-            override fun onDraw(canvas: Canvas) {
-                val padding = dp(2).toFloat()
-                rect.set(box.left * width, box.top * height, box.right * width, box.bottom * height)
-                rect.inset(-padding, -padding)
-                paint.color = Color.rgb(16, 61, 52)
-                paint.strokeWidth = dp(4).toFloat()
-                canvas.drawRoundRect(rect, padding, padding, paint)
-                paint.color = Color.rgb(103, 255, 208)
-                paint.strokeWidth = dp(2).toFloat()
-                canvas.drawRoundRect(rect, padding, padding, paint)
+            override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+                val edge = outline.strokeWidth / 2
+                rect.set(
+                    (box.left * w - 4 * density).coerceAtLeast(edge),
+                    (box.top * h - 2 * density).coerceAtLeast(edge),
+                    (box.right * w + 4 * density).coerceAtMost(w - edge),
+                    (box.bottom * h + 2 * density).coerceAtMost(h - edge)
+                )
             }
+
+            override fun onDraw(canvas: Canvas) {
+                if (rect.isEmpty) return
+                val radius = minOf(7 * density, rect.height() / 3)
+                canvas.drawRoundRect(rect, radius, radius, fill)
+                canvas.drawRoundRect(rect, radius, radius, outline)
+            }
+        }.apply {
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            alpha = 0f
         }
         val params = WindowManager.LayoutParams(-1, -1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -448,7 +453,7 @@ class ScreenTranslationService : Service() {
             PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.TOP or Gravity.LEFT
             alpha = .65f
-            title = "TextGrab reading highlight"
+            title = "${getString(R.string.app_name)} reading highlight"
             if (Build.VERSION.SDK_INT >= 30) setFitInsetsTypes(0)
             if (Build.VERSION.SDK_INT >= 28) {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -473,6 +478,7 @@ class ScreenTranslationService : Service() {
             .onSuccess {
                 highlight = layer
                 speakingWave = wave
+                view.animate().alpha(1f).setDuration(115).start()
             }
     }
 
@@ -481,8 +487,11 @@ class ScreenTranslationService : Service() {
     }
 
     private fun updateStatus(message: String) {
-        bubble?.text = if (busy) "Dừng" else "Dịch"
-        bubble?.contentDescription = if (busy) "Dừng dịch và đọc" else "Dịch và đọc màn hình"
+        bubble?.show(when {
+            !busy -> TranslationBubble.State.READY
+            speechStarted -> TranslationBubble.State.READING
+            else -> TranslationBubble.State.WAITING
+        })
         ScreenTranslationSession.update { it.copy(status = message) }
     }
 

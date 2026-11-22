@@ -24,7 +24,9 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.shape.ShapeAppearanceModel
@@ -60,6 +62,7 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
     }
 
     private lateinit var binding: ActivityMainBinding
+    private val translationLauncher = ScreenTranslationLauncher(this) { binding.root }
     private var currentBitmap: Bitmap? = null
     private var currentResult: OcrEngine.Result? = null
     private var launchedWithImage = false
@@ -144,8 +147,16 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
         binding.btnCamera.isVisible =
             packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)
         binding.btnCamera.setOnClickListener { launchCamera() }
-        binding.btnScan.setOnClickListener {
+        binding.btnScan.setOnClickListener { translationLauncher.start() }
+        binding.btnScreenTranslationSettings.setOnClickListener {
             startActivity(Intent(this, LiveActivity::class.java))
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ScreenTranslationSession.state.collect { state ->
+                    binding.btnScan.setText(if (state.running) R.string.live_minimize else R.string.live_open)
+                }
+            }
         }
         binding.btnAdvanced.setOnClickListener {
             binding.advancedGroup.isVisible = !binding.advancedGroup.isVisible
@@ -252,7 +263,6 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
         binding.btnAccessibility.isVisible = false
         binding.btnSetAssistant.isVisible = !isAssistantApp()
         val needsSetup = binding.btnAccessibility.isVisible
-        binding.btnScan.setText(R.string.live_open)
         binding.setupHeader.isVisible = needsSetup
         binding.setupCard.isVisible = needsSetup
         applySegmentShapes(binding.btnAccessibility)

@@ -22,31 +22,27 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Glass Brand Chip -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingHorizontal="14dp"
-                android:paddingVertical="6dp"
-                android:background="@drawable/bg_glass_badge">
+                android:paddingVertical="6dp">
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_bolt"
-                    app:tint="#5EEAD4" />
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_screen_translate_mark" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:text="TEXTGRAB AI • ON-DEVICE"
-                    android:textSize="12sp"
+                    android:text="@string/app_name"
+                    android:textSize="16sp"
                     android:textStyle="bold"
-                    android:letterSpacing="0.08"
-                    android:textColor="#5EEAD4" />
+                    android:textColor="#F8FCF9" />
             </LinearLayout>
 
             <!-- Main Heading with Glow Contrast -->
@@ -175,6 +171,13 @@
                 android:layout_marginTop="12dp"
                 android:orientation="vertical"
                 android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnScreenTranslationSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="52dp"
+                    android:text="@string/screen_translation_settings" />
 
                 <com.google.android.material.listitem.ListItemCardView
                     android:id="@+id/rowTargetLanguage"
