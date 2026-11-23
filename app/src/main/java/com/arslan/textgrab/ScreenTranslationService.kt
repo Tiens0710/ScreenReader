@@ -37,11 +37,14 @@ class ScreenTranslationService : Service() {
     private var reader: ImageReader? = null
     private var bubble: TranslationBubble? = null
     private var highlight: View? = null
+    private var lineHighlight: ScreenReadingHighlightView? = null
     private var regionPicker: View? = null
     private var speakingWave: SpeakingWaveView? = null
     private var lines = emptyList<CapturedLine>()
+    private var lineIndex = 0
     private var requestTimeout: Runnable? = null
     private var emptyAudioRetry = false
+    private var receivedAudiblePcm = false
     private var fallbackRecording: TranslationRecording? = null
     private var fallbackPlayer: MediaPlayer? = null
     private var responseComplete = false
@@ -286,7 +289,7 @@ class ScreenTranslationService : Service() {
                             result.lineTexts.zip(result.lineBoxes, ::CapturedLine)
                         }
                     }
-                    detected.mapNotNull { line ->
+                    mergeLineFragments(detected).mapNotNull { line ->
                         val clipped = RectF(line.box)
                         if (line.text.isBlank() ||
                             !clipped.intersect(0f, 0f, snapshot.width.toFloat(), snapshot.height.toFloat())) {
@@ -321,10 +324,30 @@ class ScreenTranslationService : Service() {
         }.invokeOnCompletion { if (!snapshot.isRecycled) snapshot.recycle() }
     }
 
+    private fun mergeLineFragments(detected: List<CapturedLine>): List<CapturedLine> {
+        val rows = mutableListOf<CapturedLine>()
+        for (line in detected) {
+            val previous = rows.lastOrNull()
+            if (previous != null) {
+                val a = previous.box
+                val b = line.box
+                val height = minOf(a.height(), b.height())
+                val overlap = minOf(a.bottom, b.bottom) - maxOf(a.top, b.top)
+                val gap = b.left - a.right
+                if (height > 0 && overlap >= height * .65f && gap in -height * .2f..height * .85f) {
+                    rows[rows.lastIndex] = CapturedLine("${previous.text} ${line.text}", RectF(a).apply { union(b) })
+                    continue
+                }
+            }
+            rows.add(line)
+        }
+        return rows
+    }
+
     private fun sendWhenReady(id: Int) {
-        if (lines.isEmpty() || !connectionReady || requestSent) return
-        val text = lines.joinToString("\n") { it.text }
-        if (client?.askText("TRANSLATE_SCREEN\n$text") != true) {
+        val line = lines.getOrNull(lineIndex) ?: return
+        if (!connectionReady || requestSent) return
+        if (client?.sendRealtimeText("TRANSLATE_SCREEN\n${line.text}") != true) {
             fail(id, "Không gửi được nội dung. Hãy chạm Dịch để thử lại.")
             return
         }
@@ -354,6 +377,17 @@ class ScreenTranslationService : Service() {
             override fun onTranscript(text: String) {}
             override fun onAudio(bytes: ByteArray) { main.post {
                 if (!isCurrent() || !requestSent || responseComplete || bytes.size < 2) return@post
+                if (!receivedAudiblePcm) {
+                    // Zero or near-zero PCM can arrive even when Gemini does not produce a voice.
+                    for (offset in 0 until bytes.size - 1 step 2) {
+                        val sample = (bytes[offset + 1].toInt() shl 8) or (bytes[offset].toInt() and 0xff)
+                        if (sample !in -128..128) {
+                            receivedAudiblePcm = true
+                            break
+                        }
+                    }
+                    if (!receivedAudiblePcm) return@post
+                }
                 if (audio == null && fallbackRecording == null) startPlayback(id)
                 runCatching { fallbackRecording?.append(bytes) }.onFailure {
                     fail(id, "Không lưu được âm thanh tạm. Hãy kiểm tra dung lượng máy.")
@@ -362,16 +396,14 @@ class ScreenTranslationService : Service() {
             } }
             override fun onTurnComplete() { main.post {
                 if (!isCurrent() || !requestSent || responseComplete) return@post
-                if (audio == null && fallbackRecording == null && !emptyAudioRetry) {
+                if (!receivedAudiblePcm && !emptyAudioRetry) {
                     emptyAudioRetry = true
                     requestSent = false
-                    android.util.Log.w("ScreenTranslate", "Gemini returned no PCM; retrying once")
+                    android.util.Log.w("ScreenTranslate", "Gemini returned no audible PCM; retrying once")
                     sendWhenReady(id)
                     return@post
                 }
                 responseComplete = true
-                client?.close()
-                client = null
                 when {
                     fallbackRecording != null -> playFallback(id)
                     audio != null -> finishAfterPlayback(id)
@@ -393,16 +425,19 @@ class ScreenTranslationService : Service() {
     }
 
     private fun startPlayback(id: Int) {
+        val index = lineIndex
         var lastLevelAt = 0L
         try {
             audio = LiveAudio(onLevel = { level ->
                 val now = SystemClock.uptimeMillis()
                 if ((lastLevelAt != 0L || level > 0f) && now - lastLevelAt >= 33) {
                     lastLevelAt = now
-                    main.post { if (id == generation && !closing) updateSpeechIndicator(level) }
+                    main.post { if (isCurrentLine(id, index)) updateSpeechIndicator(level) }
                 }
-            }, onIdle = { main.post { finishAfterPlayback(id) } },
-                onError = { main.post { fail(id, "Điện thoại không phát được âm thanh. Hãy thử lại.") } })
+            }, onIdle = { main.post { if (isCurrentLine(id, index)) finishAfterPlayback(id) } },
+                onError = { main.post {
+                    if (isCurrentLine(id, index)) fail(id, "Điện thoại không phát được âm thanh. Hãy thử lại.")
+                } })
         } catch (error: Exception) {
             android.util.Log.w("ScreenTranslate", "Could not initialize AudioTrack (${error.javaClass.simpleName}); using MediaPlayer")
             runCatching { TranslationRecording(File(cacheDir, "selected-region-audio.wav")) }
@@ -428,9 +463,11 @@ class ScreenTranslationService : Service() {
                             .onFailure { fail(id, "Không phát được giọng đọc. Hãy thử lại.") }
                     }
                 }
-                setOnCompletionListener { finishPlayback(id) }
-                setOnErrorListener { _, _, _ ->
-                    fail(id, "Không phát được giọng đọc. Hãy thử lại.")
+                setOnCompletionListener { player ->
+                    if (player === fallbackPlayer) finishPlayback(id)
+                }
+                setOnErrorListener { player, _, _ ->
+                    if (player === fallbackPlayer) fail(id, "Không phát được giọng đọc. Hãy thử lại.")
                     true
                 }
             }
@@ -446,22 +483,31 @@ class ScreenTranslationService : Service() {
 
     private fun finishPlayback(id: Int) {
         if (id != generation || closing) return
-        finishRequest()
-        updateStatus("Đã đọc xong")
+        clearPlayback()
+        lineIndex++
+        if (lineIndex == lines.size) {
+            finishRequest()
+            updateStatus("Đã đọc xong")
+        } else {
+            updateStatus("Đang dịch dòng tiếp theo…")
+            sendWhenReady(id)
+        }
     }
+
+    private fun isCurrentLine(id: Int, index: Int) = id == generation && !closing && index == lineIndex
 
     private fun updateSpeechIndicator(level: Float) {
         if (level > 0f) showSpeechHighlight()
+        lineHighlight?.setLevel(level)
         speakingWave?.setLevel(level)
     }
 
     private fun showSpeechHighlight() {
-        if (speechStarted || lines.isEmpty()) return
+        val line = lines.getOrNull(lineIndex) ?: return
+        if (speechStarted) return
         speechStarted = true
-        val box = RectF(lines.first().box)
-        lines.drop(1).forEach { box.union(it.box) }
-        android.util.Log.i("ScreenTranslate", "Reading selected region after ${SystemClock.elapsedRealtime() - tappedAt} ms")
-        showHighlight(box)
+        android.util.Log.i("ScreenTranslate", "Reading line ${lineIndex + 1}/${lines.size} after ${SystemClock.elapsedRealtime() - tappedAt} ms")
+        showHighlight(line.box)
         updateStatus("Đang đọc tiếng Việt…")
     }
 
@@ -480,6 +526,7 @@ class ScreenTranslationService : Service() {
         clearPlayback()
         detachCapture()
         lines = emptyList()
+        lineIndex = 0
         connectionReady = false
         bubble?.visibility = View.VISIBLE
         bubble?.show(TranslationBubble.State.READY)
@@ -493,10 +540,12 @@ class ScreenTranslationService : Service() {
         runCatching { fallbackRecording?.discard() }
         fallbackRecording = null
         emptyAudioRetry = false
+        receivedAudiblePcm = false
         audio?.close()
         audio = null
         removeOverlay(highlight)
         highlight = null
+        lineHighlight = null
         speakingWave = null
         speechStarted = false
         responseComplete = false
@@ -564,38 +613,7 @@ class ScreenTranslationService : Service() {
     }
 
     private fun showHighlight(box: RectF) {
-        val view = object : View(this) {
-            private val density = resources.displayMetrics.density
-            private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.argb(28, 76, 222, 174)
-            }
-            private val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                strokeWidth = 1.5f * density
-                color = Color.rgb(0, 139, 112)
-            }
-            private val rect = RectF()
-
-            override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-                val edge = outline.strokeWidth / 2
-                rect.set(
-                    (box.left * w - 4 * density).coerceAtLeast(edge),
-                    (box.top * h - 2 * density).coerceAtLeast(edge),
-                    (box.right * w + 4 * density).coerceAtMost(w - edge),
-                    (box.bottom * h + 2 * density).coerceAtMost(h - edge)
-                )
-            }
-
-            override fun onDraw(canvas: Canvas) {
-                if (rect.isEmpty) return
-                val radius = minOf(7 * density, rect.height() / 3)
-                canvas.drawRoundRect(rect, radius, radius, fill)
-                canvas.drawRoundRect(rect, radius, radius, outline)
-            }
-        }.apply {
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            alpha = 0f
-        }
+        val view = ScreenReadingHighlightView(this, box)
         val params = WindowManager.LayoutParams(-1, -1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -609,7 +627,7 @@ class ScreenTranslationService : Service() {
             }
         }
         val wave = SpeakingWaveView(this).apply { importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
-        val wavePosition = FrameLayout.LayoutParams(dp(164), dp(34), Gravity.TOP or Gravity.CENTER_HORIZONTAL)
+        val wavePosition = FrameLayout.LayoutParams(dp(154), dp(32), Gravity.TOP or Gravity.CENTER_HORIZONTAL)
             .apply { topMargin = dp(38) }
         val layer = FrameLayout(this).apply {
             addView(view, FrameLayout.LayoutParams(-1, -1))
@@ -626,8 +644,8 @@ class ScreenTranslationService : Service() {
         runCatching { getSystemService(WindowManager::class.java).addView(layer, params) }
             .onSuccess {
                 highlight = layer
+                lineHighlight = view
                 speakingWave = wave
-                view.animate().alpha(1f).setDuration(115).start()
             }
     }
 

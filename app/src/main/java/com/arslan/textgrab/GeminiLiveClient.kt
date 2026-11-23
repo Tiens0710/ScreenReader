@@ -233,6 +233,10 @@ class GeminiLiveClient(private val apiKey: String, private val listener: Listene
         if (!accepted && replace) replacingTurn = false
         return accepted
     }
+
+    fun sendRealtimeText(text: String): Boolean =
+        send(JSONObject().put("realtimeInput", JSONObject().put("text", text)))
+
     /** Client content interrupts the old generation; false waits for the next screen prompt. */
     fun interruptForScreenChange(): Boolean = send(JSONObject().put("clientContent", JSONObject()
         .put("turns", JSONArray().put(JSONObject().put("role", "user")
