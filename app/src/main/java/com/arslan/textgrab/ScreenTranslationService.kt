@@ -36,6 +36,7 @@ class ScreenTranslationService : Service() {
     private var display: VirtualDisplay? = null
     private var reader: ImageReader? = null
     private var bubble: TranslationBubble? = null
+    private var floatingMenu: FloatingGlassMenu? = null
     private var highlight: View? = null
     private var lineHighlight: ScreenReadingHighlightView? = null
     private var regionPicker: View? = null
@@ -99,6 +100,7 @@ class ScreenTranslationService : Service() {
                         setSize(w, h)
                         if (width != oldWidth || height != oldHeight) {
                             if (regionPicker != null) dismissRegionPicker()
+                            floatingMenu?.dismiss()
                             if (busy) fail(generation, "Màn hình vừa xoay. Chạm Dịch để thử lại.")
                             display?.resize(width, height, resources.displayMetrics.densityDpi)
                         }
@@ -560,49 +562,83 @@ class ScreenTranslationService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.RIGHT or Gravity.TOP
-            x = dp(12)
+            x = 0
             y = dp(140)
             title = getString(R.string.app_name)
         }
-        val button = TranslationBubble(App.localizedContext(this), ::dp).apply {
-            setOnClickListener { chooseRegion() }
+        val context = App.localizedContext(this)
+        val button = TranslationBubble(context, ::dp)
+        val menu = FloatingGlassMenu(
+            context, windows, ::dp,
+            top = { (params.y - dp(22)).coerceIn(0, (resources.displayMetrics.heightPixels - dp(125)).coerceAtLeast(0)) },
+            onTranslate = {
+                if (busy) finishRequest()
+                chooseRegion()
+            },
+            onLock = ::lockFromMenu,
+            onDismiss = { button.setInteracting(false) },
+        )
+        floatingMenu = menu
+        button.setOnClickListener {
+            if (busy) chooseRegion()
+            else if (menu.isOpen) menu.dismiss(animated = true)
+            else {
+                button.setInteracting(true)
+                menu.open()
+            }
         }
         button.setOnTouchListener(object : View.OnTouchListener {
-            var x = 0f
-            var y = 0f
-            var initialX = 0
-            var initialY = 0
-            var moved = false
+            private var startX = 0f
+            private var startY = 0f
+            private var initialY = 0
+            private var movingVertically = false
+
             override fun onTouch(view: View, event: MotionEvent): Boolean {
+                val inward = startX - event.rawX
+                val vertical = event.rawY - startY
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
-                        x = event.rawX
-                        y = event.rawY
-                        initialX = params.x
+                        startX = event.rawX
+                        startY = event.rawY
                         initialY = params.y
-                        moved = false
+                        movingVertically = false
                         button.setInteracting(true)
-                        view.isPressed = true
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        if (kotlin.math.abs(event.rawX - x) + kotlin.math.abs(event.rawY - y) > dp(8)) moved = true
-                        if (moved) {
-                            view.isPressed = false
-                            params.x = (initialX - (event.rawX - x).toInt()).coerceIn(
-                                0, (resources.displayMetrics.widthPixels - view.width).coerceAtLeast(0))
-                            params.y = (initialY + (event.rawY - y).toInt()).coerceIn(
-                                0, (resources.displayMetrics.heightPixels - view.height).coerceAtLeast(0))
-                            windows.updateViewLayout(view, params)
+                        if (!menu.isOpen) {
+                            if (button.isReady && kotlin.math.abs(vertical) > dp(12) &&
+                                kotlin.math.abs(vertical) > kotlin.math.abs(inward) * 1.8f) {
+                                movingVertically = true
+                                menu.dismiss()
+                                button.setInteracting(true)
+                            }
+                            if (movingVertically) {
+                                params.y = (initialY + vertical.roundToInt()).coerceIn(
+                                    0, (resources.displayMetrics.heightPixels - view.height).coerceAtLeast(0))
+                                windows.updateViewLayout(view, params)
+                            } else if (inward > dp(4)) {
+                                button.followSwipe(inward / 4)
+                                menu.follow((inward / dp(42)).coerceIn(0f, 1f))
+                            } else menu.dismiss()
                         }
                     }
-                    MotionEvent.ACTION_UP -> {
-                        view.isPressed = false
-                        if (!moved) view.performClick()
-                        button.setInteracting(false)
-                    }
-                    MotionEvent.ACTION_CANCEL -> {
-                        view.isPressed = false
-                        button.setInteracting(false)
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        button.followSwipe(0f)
+                        val released = event.actionMasked == MotionEvent.ACTION_UP
+                        val opensMenu = released && !movingVertically && inward >= dp(24) &&
+                            inward > kotlin.math.abs(vertical) * 1.2f
+                        if (opensMenu) {
+                            menu.open()
+                            button.setInteracting(menu.isOpen)
+                        } else if (menu.isOpen) {
+                            if (released) menu.dismiss(animated = true)
+                        } else {
+                            menu.dismiss(animated = true)
+                            button.setInteracting(false)
+                            if (released && busy && kotlin.math.abs(inward) < dp(8) && kotlin.math.abs(vertical) < dp(8)) {
+                                view.performClick()
+                            }
+                        }
                     }
                 }
                 return true
@@ -610,6 +646,30 @@ class ScreenTranslationService : Service() {
         })
         windows.addView(button, params)
         bubble = button
+    }
+
+    private fun lockFromMenu() {
+        if (Build.VERSION.SDK_INT < 28) {
+            Toast.makeText(this, R.string.screen_lock_unsupported, Toast.LENGTH_LONG).show()
+            return
+        }
+        val lockService = ScreenLockService.instance
+        if (lockService == null) {
+            Toast.makeText(this, R.string.screen_lock_enable, Toast.LENGTH_LONG).show()
+            runCatching {
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }.onFailure {
+                Toast.makeText(this, R.string.screen_lock_settings_failed, Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+        finishRequest()
+        dismissRegionPicker(showBubble = false)
+        runCatching { projection?.stop() }
+        stopSelf()
+        if (!lockService.lockScreen()) {
+            Toast.makeText(this, R.string.screen_lock_failed, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun showHighlight(box: RectF) {
@@ -664,6 +724,8 @@ class ScreenTranslationService : Service() {
 
     override fun onDestroy() {
         closing = true; ++generation; work.cancel(); main.removeCallbacksAndMessages(null)
+        floatingMenu?.dismiss()
+        floatingMenu = null
         dismissRegionPicker(showBubble = false)
         finishRequest()
         runCatching { display?.release() }; runCatching { projection?.stop() }

@@ -1,6 +1,6 @@
 # Screen Reader
 
-Screen Reader is an Android app that translates on-screen text into Vietnamese and reads it aloud. Tap the floating button, then drag around the text you want to hear.
+Screen Reader is an Android app that translates on-screen text into Vietnamese and reads it aloud. Swipe the right edge handle inward, tap the scan icon, then drag around the text you want to hear.
 
 ## Why I built Screen Reader
 
@@ -17,11 +17,15 @@ I built Screen Reader for my mom. She doesn't know how to read, and I wanted her
 1. Open Screen Reader and tap **Translate screen** (**Dịch màn hình**) on the home screen.
 2. On first use, paste your Gemini API key into the **Gemini API key** dialog and tap **Save**. Put the key in the app after installing it. Never add a key to the source code, Gradle configuration, or APK.
 3. Allow the floating button to appear over other apps and approve Android's screen-sharing request. Select **Entire screen** if Android asks what to share.
-4. Open the page you want to translate. Tap the round Screen Reader icon, drag a rectangle around the text, and release to start. Drag the button itself to reposition it.
+4. Open the page you want to translate. Swipe inward from the right edge handle, tap the scan icon, drag a rectangle around the text, and release to start. Drag the handle up or down to reposition it.
 5. A spinner shows when Screen Reader is waiting. During playback, a mint outline follows the line being read within the selected area. Tap the spinner or stop icon to cancel the current reading.
 6. To remove the floating button and end screen sharing, tap **Disable Translate button** in the Screen Reader notification or open **Settings → Screen translation settings** in the app.
 
 To add or replace your key manually, tap **Enter Gemini key** (**Nhập khóa Gemini**) or **Change Gemini key** (**Đổi khóa Gemini**) just below **Translate screen** on the home screen. Screen translation needs an internet connection and a Gemini API key with access to the Live model configured in this build. Requests use the configured key's quota and billing.
+
+## Lock the screen
+
+Swipe the edge handle inward and tap the power icon. On first use, enable **Screen Reader • Screen lock** in Android Accessibility settings, then repeat the gesture. Screen locking requires Android 9 or later and ends the current reading and screen-sharing session.
 
 ## Read text from an image
 
