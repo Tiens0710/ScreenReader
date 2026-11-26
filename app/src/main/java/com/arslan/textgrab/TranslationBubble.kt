@@ -1,6 +1,7 @@
 package com.arslan.textgrab
 
 import android.content.Context
+import android.animation.ValueAnimator
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Rect
@@ -78,7 +79,12 @@ internal class TranslationBubble(context: Context, private val dp: (Int) -> Int)
     val isReady: Boolean get() = state == State.READY
 
     fun followSwipe(inward: Float) {
-        rail.translationX = -inward.coerceIn(0f, dp(10).toFloat())
+        rail.animate().cancel()
+        if (inward == 0f && ValueAnimator.areAnimatorsEnabled()) {
+            rail.animate().scaleY(1f).setDuration(150).start()
+        } else {
+            rail.scaleY = 1f - (inward / dp(9)).coerceIn(0f, 1f) * .20f
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {

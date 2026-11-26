@@ -1,6 +1,7 @@
 package com.arslan.textgrab
 
 import android.animation.ValueAnimator
+import androidx.core.animation.doOnEnd
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Canvas
@@ -20,11 +21,9 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.view.animation.DecelerateInterpolator
-import android.view.animation.OvershootInterpolator
+import android.view.animation.PathInterpolator
 import android.widget.ImageButton
 import android.widget.LinearLayout
-import kotlin.math.sin
 
 /** A separate window lets the menu follow a captured gesture without moving its touch target. */
 internal class FloatingGlassMenu(
@@ -39,23 +38,19 @@ internal class FloatingGlassMenu(
 ) {
     private var panel: LinearLayout? = null
     private var layout: WindowManager.LayoutParams? = null
-    private var opening: ValueAnimator? = null
+    private var transition: ValueAnimator? = null
+    private var reveal = 0f
+    private val openCurve = PathInterpolator(.2f, .85f, .25f, 1f)
+    private val closeCurve = PathInterpolator(.55f, 0f, .78f, .4f)
     var isOpen = false
         private set
 
     fun follow(progress: Float) {
-        if (isOpen || progress <= 0f) return
+        if (isOpen || (panel == null && progress <= 0f)) return
+        if (!ValueAnimator.areAnimatorsEnabled()) return
         val view = panel ?: attach() ?: return
-        view.animate().cancel()
-        // Leave room for the release to settle even after a long swipe.
-        view.translationX = dp(34) * (1f - progress) + dp(3)
-        view.scaleX = .48f + .47f * progress
-        view.scaleY = .68f + .29f * progress
-        view.alpha = (.08f + .92f * progress).coerceAtMost(1f)
-        view.getChildAt(0).alpha = (progress * 1.15f - .24f).coerceIn(0f, .86f)
-        view.getChildAt(2).alpha = (progress * 1.18f - .45f).coerceIn(0f, .73f)
-        view.getChildAt(4).alpha = (progress * 1.22f - .61f).coerceIn(0f, .61f)
-        (view.background as GlassSurface).shine(progress * .33f, progress * .46f)
+        cancelTransition()
+        render(view, progress * .88f)
     }
 
     fun open() {
@@ -69,61 +64,73 @@ internal class FloatingGlassMenu(
             return
         }
         isOpen = true
-        view.animate().cancel()
         view.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
-        val glass = view.background as GlassSurface
-        val startX = view.translationX
-        val startScaleX = view.scaleX
-        val startScaleY = view.scaleY
-        val startAlpha = view.alpha
-        val icons = listOf(view.getChildAt(0), view.getChildAt(2), view.getChildAt(4))
-        val iconAlphas = icons.map { it.alpha }
-        val spring = OvershootInterpolator(1.65f)
-        opening = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 370
-            interpolator = android.view.animation.LinearInterpolator()
-            addUpdateListener {
-                val time = it.animatedFraction
-                val settle = spring.getInterpolation((time * 1.27f).coerceAtMost(1f))
-                val bounce = sin(Math.PI * time).toFloat() * (1f - time)
-                view.translationX = startX * (1f - settle) - dp(5) * bounce
-                view.scaleX = (startScaleX + (1f - startScaleX) * settle).coerceAtMost(1.035f)
-                view.scaleY = (startScaleY + (1f - startScaleY) * settle).coerceAtMost(1.035f)
-                view.alpha = startAlpha + (1f - startAlpha) * (time * 4f).coerceAtMost(1f)
-                icons.forEachIndexed { index, icon ->
-                    revealIcon(icon, iconAlphas[index], time, .07f + index * .115f)
-                }
-                glass.shine(.12f + time * .88f, sin(Math.PI * time).toFloat() * .9f)
-            }
-            start()
-        }
+        animateTo(view, 1f, 280)
     }
 
-    private fun revealIcon(icon: View, startAlpha: Float, time: Float, delay: Float) {
-        val progress = ((time - delay) / .53f).coerceIn(0f, 1f)
+    private fun render(view: LinearLayout, progress: Float) {
+        reveal = progress
         val remaining = 1f - progress
-        icon.alpha = 1f - (1f - startAlpha) * remaining * remaining
-        icon.translationX = dp(6) * remaining * (1f - startAlpha)
+        view.translationX = dp(12) * remaining
+        view.scaleX = .10f + .90f * progress
+        view.scaleY = .26f + .74f * progress
+        view.alpha = (progress * 3.8f).coerceAtMost(1f)
+        for (index in 0..2) {
+            val icon = view.getChildAt(index * 2)
+            val offset = index - 1
+            val threshold = if (offset == 0) .22f else if (offset < 0) .39f else .48f
+            val unfold = ((progress - threshold) / (1f - threshold)).coerceIn(0f, 1f)
+            val ease = 1f - (1f - unfold) * (1f - unfold)
+            icon.alpha = ease
+            icon.translationY = -offset * dp(24) * (1f - ease)
+            icon.translationX = dp(15) * (1f - ease)
+            icon.scaleX = .78f + .22f * ease
+            icon.scaleY = icon.scaleX
+        }
+        val dividers = ((progress - .60f) / .40f).coerceIn(0f, 1f)
+        view.getChildAt(1).alpha = dividers
+        view.getChildAt(3).alpha = dividers
+        (view.background as GlassSurface).shine(progress, 2.6f * progress * remaining)
+    }
+
+    private fun cancelTransition() {
+        val running = transition
+        transition = null
+        running?.cancel()
+    }
+
+    private fun animateTo(view: LinearLayout, target: Float, durationMs: Long) {
+        cancelTransition()
+        if (!ValueAnimator.areAnimatorsEnabled() || reveal == target) {
+            render(view, target)
+            if (target == 0f) remove(view)
+            return
+        }
+        val animation = ValueAnimator.ofFloat(reveal, target).apply {
+            duration = durationMs
+            interpolator = if (target == 1f) openCurve else closeCurve
+            addUpdateListener { render(view, it.animatedValue as Float) }
+            doOnEnd {
+                if (transition !== it) return@doOnEnd
+                transition = null
+                if (target == 0f) remove(view)
+            }
+        }
+        transition = animation
+        animation.start()
     }
 
     fun dismiss(animated: Boolean = false) {
         val view = panel ?: return
         isOpen = false
-        opening?.cancel()
-        opening = null
-        (view.background as GlassSurface).shine(1f, 0f)
+        cancelTransition()
         val params = layout
         if (params != null) {
             params.flags = inactiveFlags
             runCatching { windows.updateViewLayout(view, params) }
         }
         view.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
-        view.animate().cancel()
-        if (animated) {
-            view.animate().translationX(dp(31).toFloat()).scaleX(.46f).scaleY(.72f).alpha(0f)
-                .setInterpolator(DecelerateInterpolator()).setDuration(155)
-                .withEndAction { if (panel === view && !isOpen) remove(view) }.start()
-        } else remove(view)
+        if (animated) animateTo(view, 0f, 190) else remove(view)
         onDismiss()
     }
 
@@ -147,8 +154,6 @@ internal class FloatingGlassMenu(
             elevation = dp(5).toFloat()
             pivotX = dp(64).toFloat()
             pivotY = dp(79).toFloat()
-            scaleX = .55f
-            scaleY = .74f
             alpha = 0f
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             addView(action(R.drawable.ic_screen_translate_mark, R.string.edge_translate) {
@@ -166,6 +171,7 @@ internal class FloatingGlassMenu(
                 onLock()
             })
         }
+        render(view, 0f)
         val params = WindowManager.LayoutParams(dp(64), dp(158), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             inactiveFlags, PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.RIGHT or Gravity.TOP
@@ -220,8 +226,8 @@ internal class FloatingGlassMenu(
             if (area.isEmpty) return
             band = area.width() * .74f
             base.shader = LinearGradient(area.left, area.top, area.right, area.bottom,
-                intArrayOf(0xFAF9FCFF.toInt(), 0xB6D4E2FC.toInt(), 0xE9EEF5FF.toInt()),
-                floatArrayOf(0f, .55f, 1f), Shader.TileMode.CLAMP)
+                intArrayOf(0xF6FEFFFF.toInt(), 0xCDDFE9FA.toInt(), 0xE3E8F2FF.toInt(), 0xF4C7D7EE.toInt()),
+                floatArrayOf(0f, .43f, .77f, 1f), Shader.TileMode.CLAMP)
             reflection.shader = LinearGradient(0f, 0f, band, band * .42f,
                 intArrayOf(0x00FFFFFF, 0xCCFFFFFF.toInt(), 0x00FFFFFF),
                 floatArrayOf(0f, .52f, 1f), Shader.TileMode.CLAMP)
@@ -259,6 +265,7 @@ internal class FloatingGlassMenu(
     }
 
     private fun remove(view: View) {
+        reveal = 0f
         panel = null
         layout = null
         runCatching { windows.removeViewImmediate(view) }

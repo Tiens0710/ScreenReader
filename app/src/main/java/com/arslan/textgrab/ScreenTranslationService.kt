@@ -787,10 +787,10 @@ class ScreenTranslationService : Service() {
                                 params.y = (initialY + vertical.roundToInt()).coerceIn(
                                     0, (resources.displayMetrics.heightPixels - view.height).coerceAtLeast(0))
                                 windows.updateViewLayout(view, params)
-                            } else if (inward > dp(4)) {
-                                button.followSwipe(inward / 4)
-                                menu.follow((inward / dp(42)).coerceIn(0f, 1f))
-                            } else menu.dismiss()
+                            } else {
+                                button.followSwipe(inward / 5)
+                                menu.follow(((inward - dp(4)) / dp(38)).coerceIn(0f, 1f))
+                            }
                         }
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
