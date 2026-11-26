@@ -628,7 +628,9 @@ class ScreenTranslationService : Service() {
                         val opensMenu = released && !movingVertically && inward >= dp(24) &&
                             inward > kotlin.math.abs(vertical) * 1.2f
                         if (opensMenu) {
+                            val wasOpen = menu.isOpen
                             menu.open()
+                            if (!wasOpen && menu.isOpen) view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                             button.setInteracting(menu.isOpen)
                         } else if (menu.isOpen) {
                             if (released) menu.dismiss(animated = true)
