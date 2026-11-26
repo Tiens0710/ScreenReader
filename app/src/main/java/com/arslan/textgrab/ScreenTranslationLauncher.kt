@@ -28,6 +28,7 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Starts the overlay from the current screen after Android's permission prompts. */
 internal class ScreenTranslationLauncher(
@@ -36,6 +37,10 @@ internal class ScreenTranslationLauncher(
 ) {
     private var waitingForOverlay: Job? = null
     private val notificationPermission = activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) { start() }
+    private val microphonePermission = activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startWithMicrophone()
+        else Snackbar.make(anchor(), R.string.guide_mic_required, Snackbar.LENGTH_LONG).show()
+    }
     private val overlayPermission = activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (Settings.canDrawOverlays(activity)) start()
         else Snackbar.make(anchor(), R.string.live_overlay_needed, Snackbar.LENGTH_LONG).show()
@@ -82,13 +87,43 @@ internal class ScreenTranslationLauncher(
         projectionPermission.launch(consent)
     }
 
+    private fun hasMicrophonePermission() =
+        ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    fun enableGuide() {
+        MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.guide_enable)
+            .setMessage(R.string.guide_consent)
+            .setNegativeButton(R.string.home_cancel, null)
+            .setPositiveButton(R.string.guide_enable) { _, _ ->
+                if (hasMicrophonePermission()) startWithMicrophone()
+                else microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+            }.show()
+    }
+
+    private fun startWithMicrophone() {
+        activity.getSharedPreferences("gemini_live_ui", Activity.MODE_PRIVATE)
+            .edit().putBoolean("voice_guide_enabled", true).apply()
+        if (ScreenTranslationSession.state.value.running && !ScreenTranslationSession.state.value.guideReady) {
+            activity.stopService(Intent(activity, ScreenTranslationService::class.java))
+            activity.lifecycleScope.launch {
+                val stopped = withTimeoutOrNull(3_000) { ScreenTranslationSession.state.first { !it.running } }
+                if (stopped != null) start()
+                else Snackbar.make(anchor(), "Hãy tắt nút nổi rồi bật lại để dùng micro.", Snackbar.LENGTH_LONG).show()
+            }
+        } else start()
+    }
+
     private fun startService(resultCode: Int, data: Intent) {
         if (ScreenTranslationSession.state.value.running || waitingForOverlay?.isActive == true) return
         val starting = ScreenTranslationState(status = "Đang bật nút Dịch…")
         ScreenTranslationSession.reset(starting)
         try {
+            val guideEnabled = activity.getSharedPreferences("gemini_live_ui", Activity.MODE_PRIVATE)
+                .getBoolean("voice_guide_enabled", false) && hasMicrophonePermission()
             ContextCompat.startForegroundService(activity, Intent(activity, ScreenTranslationService::class.java)
                 .setAction(ScreenTranslationService.START)
+                .putExtra(ScreenTranslationService.EXTRA_ENABLE_GUIDE, guideEnabled)
                 .putExtra(LiveScreenService.EXTRA_RESULT, resultCode)
                 .putExtra(LiveScreenService.EXTRA_DATA, data))
         } catch (_: Exception) {

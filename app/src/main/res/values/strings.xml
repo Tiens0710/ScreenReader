@@ -148,6 +148,10 @@
     <string name="edge_menu_title">Screen Reader quick actions</string>
     <string name="edge_translate">Translate a region</string>
     <string name="edge_lock">Turn off screen</string>
+    <string name="edge_guide">Ask AI</string>
+    <string name="guide_enable">Enable voice guidance</string>
+    <string name="guide_consent">Ask by tapping the microphone in the floating menu. Your question and text detected on the screen are sent to Google Gemini. A screenshot may also be sent to locate icons.</string>
+    <string name="guide_mic_required">Allow microphone access to ask by voice.</string>
     <string name="screen_lock_accessibility_label">Screen Reader • Screen lock</string>
     <string name="screen_lock_accessibility_description">Lets Screen Reader lock the phone when you select Turn off screen. This service cannot read on-screen content.</string>
     <string name="screen_lock_enable">Enable Screen Reader • Screen lock in Accessibility, then try again.</string>

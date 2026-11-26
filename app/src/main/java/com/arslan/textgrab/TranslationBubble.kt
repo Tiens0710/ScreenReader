@@ -15,7 +15,7 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 
 internal class TranslationBubble(context: Context, private val dp: (Int) -> Int) : FrameLayout(context) {
-    enum class State { READY, WAITING, READING }
+    enum class State { READY, WAITING, READING, LISTENING, GUIDE_WAITING, FOLLOW_UP }
 
     private val ink = Color.rgb(15, 44, 39)
     private val paper = Color.rgb(248, 252, 249)
@@ -109,7 +109,7 @@ internal class TranslationBubble(context: Context, private val dp: (Int) -> Int)
         updateGestureExclusion()
         rail.visibility = if (isReady) View.VISIBLE else View.GONE
         activityIndicator.visibility = if (isReady) View.GONE else View.VISIBLE
-        val waiting = value == State.WAITING
+        val waiting = value == State.WAITING || value == State.GUIDE_WAITING
         spinner.visibility = if (waiting) View.VISIBLE else View.GONE
         icon.visibility = if (waiting) View.INVISIBLE else View.VISIBLE
         when (value) {
@@ -117,6 +117,13 @@ internal class TranslationBubble(context: Context, private val dp: (Int) -> Int)
                 contentDescription = context.getString(R.string.edge_handle_description)
             }
             State.WAITING -> contentDescription = "Đang dịch. Chạm để dừng"
+            State.GUIDE_WAITING -> contentDescription = "AI đang tìm bước tiếp theo. Chạm để dừng"
+            State.LISTENING, State.FOLLOW_UP -> {
+                icon.setImageResource(R.drawable.ic_screen_guide)
+                icon.setColorFilter(if (value == State.LISTENING) Color.RED else teal)
+                contentDescription = if (value == State.LISTENING) "Đang nghe. Chạm để hủy"
+                    else "Hỏi tiếp hoặc yêu cầu nói lại"
+            }
             State.READING -> {
                 icon.setImageResource(R.drawable.ic_stop_reading)
                 icon.setColorFilter(teal)
@@ -127,8 +134,8 @@ internal class TranslationBubble(context: Context, private val dp: (Int) -> Int)
             this.shape = GradientDrawable.OVAL
             setColor(when (value) {
                 State.READY -> ink
-                State.WAITING -> paper
-                State.READING -> mint
+                State.WAITING, State.GUIDE_WAITING, State.LISTENING -> paper
+                State.READING, State.FOLLOW_UP -> mint
             })
             setStroke(dp(1), if (value == State.READY) Color.rgb(59, 105, 93) else teal)
         }

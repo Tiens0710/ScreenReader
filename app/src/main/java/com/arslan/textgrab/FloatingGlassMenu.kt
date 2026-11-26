@@ -33,6 +33,7 @@ internal class FloatingGlassMenu(
     private val dp: (Int) -> Int,
     private val top: () -> Int,
     private val onTranslate: () -> Unit,
+    private val onGuide: () -> Unit,
     private val onLock: () -> Unit,
     private val onDismiss: () -> Unit,
 ) {
@@ -53,6 +54,7 @@ internal class FloatingGlassMenu(
         view.alpha = (.08f + .92f * progress).coerceAtMost(1f)
         view.getChildAt(0).alpha = (progress * 1.15f - .24f).coerceIn(0f, .86f)
         view.getChildAt(2).alpha = (progress * 1.18f - .45f).coerceIn(0f, .73f)
+        view.getChildAt(4).alpha = (progress * 1.22f - .61f).coerceIn(0f, .61f)
         (view.background as GlassSurface).shine(progress * .33f, progress * .46f)
     }
 
@@ -74,10 +76,8 @@ internal class FloatingGlassMenu(
         val startScaleX = view.scaleX
         val startScaleY = view.scaleY
         val startAlpha = view.alpha
-        val scan = view.getChildAt(0)
-        val power = view.getChildAt(2)
-        val scanAlpha = scan.alpha
-        val powerAlpha = power.alpha
+        val icons = listOf(view.getChildAt(0), view.getChildAt(2), view.getChildAt(4))
+        val iconAlphas = icons.map { it.alpha }
         val spring = OvershootInterpolator(1.65f)
         opening = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 370
@@ -90,8 +90,9 @@ internal class FloatingGlassMenu(
                 view.scaleX = (startScaleX + (1f - startScaleX) * settle).coerceAtMost(1.035f)
                 view.scaleY = (startScaleY + (1f - startScaleY) * settle).coerceAtMost(1.035f)
                 view.alpha = startAlpha + (1f - startAlpha) * (time * 4f).coerceAtMost(1f)
-                revealIcon(scan, scanAlpha, time, .07f)
-                revealIcon(power, powerAlpha, time, .24f)
+                icons.forEachIndexed { index, icon ->
+                    revealIcon(icon, iconAlphas[index], time, .07f + index * .115f)
+                }
                 glass.shine(.12f + time * .88f, sin(Math.PI * time).toFloat() * .9f)
             }
             start()
@@ -145,7 +146,7 @@ internal class FloatingGlassMenu(
             background = GlassSurface(dp(26).toFloat(), dp(1).toFloat())
             elevation = dp(5).toFloat()
             pivotX = dp(64).toFloat()
-            pivotY = dp(56).toFloat()
+            pivotY = dp(79).toFloat()
             scaleX = .55f
             scaleY = .74f
             alpha = 0f
@@ -154,14 +155,18 @@ internal class FloatingGlassMenu(
                 dismiss()
                 onTranslate()
             })
-            addView(View(context).apply { setBackgroundColor(0x486781AE) },
-                LinearLayout.LayoutParams(dp(26), dp(1)))
+            addView(separator())
+            addView(action(R.drawable.ic_screen_guide, R.string.edge_guide) {
+                dismiss()
+                onGuide()
+            })
+            addView(separator())
             addView(action(R.drawable.ic_screen_power, R.string.edge_lock) {
                 dismiss()
                 onLock()
             })
         }
-        val params = WindowManager.LayoutParams(dp(64), dp(109), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        val params = WindowManager.LayoutParams(dp(64), dp(158), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             inactiveFlags, PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.RIGHT or Gravity.TOP
             x = dp(12)
@@ -174,6 +179,11 @@ internal class FloatingGlassMenu(
             panel = view
             view
         }.getOrNull()
+    }
+
+    private fun separator() = View(context).apply {
+        setBackgroundColor(0x486781AE)
+        layoutParams = LinearLayout.LayoutParams(dp(26), dp(1))
     }
 
     private fun action(icon: Int, label: Int, onClick: () -> Unit) = ImageButton(context).apply {

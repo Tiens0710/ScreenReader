@@ -141,6 +141,10 @@
     <string name="edge_menu_title">Thao tác nhanh Screen Reader</string>
     <string name="edge_translate">Dịch vùng chữ</string>
     <string name="edge_lock">Tắt màn hình</string>
+    <string name="edge_guide">Hỏi AI</string>
+    <string name="guide_enable">Bật hỏi bằng giọng nói</string>
+    <string name="guide_consent">Chạm micro trong menu nổi để hỏi. Câu hỏi và chữ nhận dạng trên màn hình sẽ được gửi đến Google Gemini. App có thể gửi ảnh màn hình để xác định vị trí biểu tượng.</string>
+    <string name="guide_mic_required">Cấp quyền micro để hỏi bằng giọng nói.</string>
     <string name="screen_lock_accessibility_label">Screen Reader • Khóa màn hình</string>
     <string name="screen_lock_accessibility_description">Cho phép Screen Reader khóa điện thoại khi bạn chọn Tắt màn hình. Dịch vụ này không đọc nội dung trên màn hình.</string>
     <string name="screen_lock_enable">Hãy bật Screen Reader • Khóa màn hình trong Trợ năng rồi thử lại.</string>

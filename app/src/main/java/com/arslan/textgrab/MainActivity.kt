@@ -148,6 +148,7 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
             packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)
         binding.btnCamera.setOnClickListener { launchCamera() }
         binding.btnScan.setOnClickListener { translationLauncher.start() }
+        binding.btnVoiceGuide.setOnClickListener { translationLauncher.enableGuide() }
         binding.btnGeminiKey.setOnClickListener {
             translationLauncher.editKey {
                 refreshGeminiKeyAction()
@@ -335,6 +336,10 @@ open class MainActivity : AppCompatActivity(), SelectableOcrView.Listener {
     }
 
     private fun handleIntent(intent: Intent) {
+        if (intent.getBooleanExtra(ScreenTranslationService.EXTRA_ENABLE_GUIDE, false)) {
+            intent.removeExtra(ScreenTranslationService.EXTRA_ENABLE_GUIDE)
+            translationLauncher.enableGuide()
+        }
         val uri: Uri? = when (intent.action) {
             Intent.ACTION_SEND ->
                 if (Build.VERSION.SDK_INT >= 33)

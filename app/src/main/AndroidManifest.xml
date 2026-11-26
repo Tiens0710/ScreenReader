@@ -18,6 +18,9 @@
 
     <queries>
         <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
             <action android:name="android.intent.action.WEB_SEARCH" />
         </intent>
         <intent>
@@ -39,7 +42,7 @@
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true">
 
-        <service android:name=".ScreenTranslationService" android:exported="false" android:foregroundServiceType="mediaProjection" />
+        <service android:name=".ScreenTranslationService" android:exported="false" android:foregroundServiceType="mediaProjection|microphone" />
         <activity android:name=".LiveActivity" android:exported="false" />
         <service
             android:name=".LiveScreenService"

@@ -14,11 +14,15 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.*
 import android.provider.Settings
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.view.*
 import android.widget.*
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
 import java.io.File
+import java.util.Locale
+import kotlin.coroutines.resume
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
@@ -27,6 +31,7 @@ class ScreenTranslationService : Service() {
     companion object {
         const val START = "textgrab.translate.START"
         const val STOP = "textgrab.translate.STOP"
+        const val EXTRA_ENABLE_GUIDE = "textgrab.translate.ENABLE_GUIDE"
         private const val NOTIFICATION = 39
         private const val CHANNEL = "screen_translation"
     }
@@ -56,6 +61,13 @@ class ScreenTranslationService : Service() {
     private var client: GeminiLiveClient? = null
     private var audio: LiveAudio? = null
     private var busy = false
+    private val guideScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var guideReady = false
+    private var guideJob: Job? = null
+    private var guideSpeech: TextToSpeech? = null
+    private var guideState: TranslationBubble.State? = null
+    private var guideGoal = ""
+    private var guideHistory = emptyList<String>()
     private var width = 0
     private var height = 0
     @Volatile private var generation = 0
@@ -84,8 +96,12 @@ class ScreenTranslationService : Service() {
                 .setContentTitle("Nút Dịch đang bật")
                 .setContentText("Chỉ chụp và dịch khi bạn bấm. Chạm để mở điều khiển.")
                 .setContentIntent(open).setOngoing(true).addAction(0, "Tắt nút Dịch", stop).build()
-            if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION, notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) else startForeground(NOTIFICATION, notification)
+            guideReady = intent.getBooleanExtra(EXTRA_ENABLE_GUIDE, false) && canRecord()
+            if (Build.VERSION.SDK_INT >= 29) {
+                val micType = if (guideReady && Build.VERSION.SDK_INT >= 30)
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+                startForeground(NOTIFICATION, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or micType)
+            } else startForeground(NOTIFICATION, notification)
             check(Settings.canDrawOverlays(this)) { "Chưa cho phép nút nổi" }
             val data = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(LiveScreenService.EXTRA_DATA, Intent::class.java)
                 else @Suppress("DEPRECATION") (intent.getParcelableExtra(LiveScreenService.EXTRA_DATA) as? Intent)
@@ -101,7 +117,8 @@ class ScreenTranslationService : Service() {
                         if (width != oldWidth || height != oldHeight) {
                             if (regionPicker != null) dismissRegionPicker()
                             floatingMenu?.dismiss()
-                            if (busy) fail(generation, "Màn hình vừa xoay. Chạm Dịch để thử lại.")
+                            if (busy) fail(generation, "Màn hình vừa xoay. Hãy thử lại.")
+                            else if (guideState != null) finishRequest()
                             display?.resize(width, height, resources.displayMetrics.densityDpi)
                         }
                     }
@@ -113,7 +130,8 @@ class ScreenTranslationService : Service() {
                 resources.displayMetrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 null, null, main)
             createOverlay()
-            ScreenTranslationSession.reset(ScreenTranslationState(running = true, ready = true, status = "Chạm nút Dịch trên trang bạn muốn dịch"))
+            ScreenTranslationSession.reset(ScreenTranslationState(running = true, ready = true,
+                guideReady = guideReady, status = "Vuốt thanh nổi để mở menu"))
             android.util.Log.i("ScreenTranslate", "Ready; idle capture and network are off")
         } catch (_: Exception) {
             ScreenTranslationSession.reset(ScreenTranslationState(status = "Không bật được nút Dịch. Hãy cấp lại quyền chia sẻ màn hình."))
@@ -222,8 +240,16 @@ class ScreenTranslationService : Service() {
         val id = ++generation
         busy = true
         tappedAt = SystemClock.elapsedRealtime()
-        bubble?.visibility = View.INVISIBLE
         updateStatus("Đang chụp màn hình…")
+        takeSnapshot(region, id) { snapshot, crop ->
+            updateStatus("Đang tìm chữ…")
+            recognize(snapshot, crop, id)
+        }
+        connect(id, key)
+    }
+
+    private fun takeSnapshot(region: RectF, id: Int, onFrame: (Bitmap, Selection) -> Unit) {
+        bubble?.visibility = View.INVISIBLE
         // Hide our controls before attaching the capture surface.
         main.postDelayed({
             if (closing || id != generation) return@postDelayed
@@ -256,15 +282,147 @@ class ScreenTranslationService : Service() {
                     val snapshot = bitmap ?: return@setOnImageAvailableListener
                     android.util.Log.i("ScreenTranslate", "One snapshot acquired; capture surface detached")
                     bubble?.visibility = View.VISIBLE
-                    updateStatus("Đang tìm chữ…")
-                    recognize(snapshot, crop, id)
+                    onFrame(snapshot, crop)
                 }, main)
                 display?.surface = source.surface
-                main.postDelayed({ if (id == generation && reader != null)
-                    fail(id, "Chưa chụp được màn hình. Hãy thử lại hoặc bật lại nút Dịch.") }, 5000)
+                main.postDelayed({ if (id == generation && reader === source)
+                    fail(id, "Chưa chụp được màn hình. Hãy thử lại hoặc bật lại nút nổi.") }, 5000)
             } catch (_: Exception) { fail(id, "Không chụp được màn hình. Hãy bật lại nút Dịch.") }
         }, 180)
-        connect(id, key)
+    }
+
+    private fun canRecord() = androidx.core.content.ContextCompat.checkSelfPermission(
+        this, android.Manifest.permission.RECORD_AUDIO
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    private fun askByVoice() {
+        if (closing || regionPicker != null) return
+        val goal = guideGoal
+        val history = guideHistory
+        finishRequest()
+        if (!guideReady || !canRecord()) {
+            val setup = Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(EXTRA_ENABLE_GUIDE, true)
+            runCatching { startActivity(setup) }
+            return
+        }
+        if (LiveSession.appVisible) {
+            Toast.makeText(this, "Mở trang bạn cần hỏi rồi chạm micro.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val key = GeminiCredentials.read(this)
+        if (key.isBlank()) {
+            Toast.makeText(this, "Hãy nhập khóa Gemini trong Screen Reader.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val id = generation
+        busy = true
+        guideState = TranslationBubble.State.LISTENING
+        updateStatus("Đang nghe câu hỏi…")
+        guideJob = guideScope.launch {
+            try {
+                val question = ScreenVoiceGuide.record()
+                    ?: throw ScreenVoiceGuide.Unavailable("Chưa nghe thấy câu hỏi. Chạm micro và nói sau tiếng bíp.")
+                guideState = TranslationBubble.State.GUIDE_WAITING
+                updateStatus("Đang tìm bước tiếp theo…")
+                val answer = guideAnswer(id, key, question, goal, history)
+                val spoken = speakGuidance(id, answer)
+                if (id != generation || closing) return@launch
+                if (!spoken) {
+                    Toast.makeText(this@ScreenTranslationService, answer.speech, Toast.LENGTH_LONG).show()
+                    fail(id, "Không phát được tiếng Việt. Hãy bật hoặc cài giọng Việt trong cài đặt văn bản thành giọng nói.")
+                    return@launch
+                }
+                guideGoal = answer.goal.ifBlank { goal }
+                guideHistory = (history + answer.speech).takeLast(4)
+                busy = false
+                speakingWave?.visibility = View.GONE
+                guideState = TranslationBubble.State.FOLLOW_UP
+                updateStatus("Chạm micro để hỏi tiếp hoặc yêu cầu nói lại")
+                delay(5_000)
+                removeOverlay(highlight)
+                highlight = null
+                lineHighlight = null
+                speakingWave = null
+                delay(40_000)
+                if (id == generation) {
+                    finishRequest()
+                    updateStatus("Vuốt thanh nổi để mở menu")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ScreenVoiceGuide.Unavailable) {
+                fail(id, e.message ?: "Chưa hỏi được AI. Hãy thử lại.")
+            } catch (e: Exception) {
+                android.util.Log.w("ScreenVoiceGuide", "Guide failed: ${e.javaClass.simpleName}")
+                fail(id, "Chưa hỏi được AI. Hãy kiểm tra micro và kết nối mạng rồi thử lại.")
+            }
+        }
+    }
+
+    private suspend fun guideFrame(id: Int): Bitmap = suspendCancellableCoroutine { result ->
+        takeSnapshot(RectF(0f, 0f, 1f, 1f), id) { bitmap, _ ->
+            result.resume(bitmap) { _, undelivered, _ -> undelivered.recycle() }
+        }
+    }
+
+    private suspend fun guideAnswer(
+        id: Int, key: String, question: ByteArray, goal: String, history: List<String>,
+    ): ScreenVoiceGuide.Answer {
+        val frame = guideFrame(id)
+        try {
+            val before = ScreenVoiceGuide.fingerprint(frame)
+            if (ScreenVoiceGuide.blank(before)) return ScreenVoiceGuide.Answer(
+                "Màn hình này không chia sẻ được. Hãy mở một trang khác rồi hỏi lại.", null, false)
+            val candidates = ScreenVoiceGuide.recognize(frame)
+            if (ScreenVoiceGuide.looksSensitive(candidates)) return ScreenVoiceGuide.Answer(
+                "Trang này có thể chứa thông tin bảo mật. Hãy rời trang này trước khi hỏi.", null, false)
+            var answer = ScreenVoiceGuide.ask(key, question, candidates, goal, history)
+            if (answer.needsImage) answer = ScreenVoiceGuide.ask(key, question, candidates, goal, history, frame)
+            val latest = guideFrame(id)
+            val changed = try {
+                ScreenVoiceGuide.changed(before, ScreenVoiceGuide.fingerprint(latest), answer.target)
+            } finally { latest.recycle() }
+            return if (changed) ScreenVoiceGuide.Answer(
+                "Màn hình đã thay đổi. Chạm micro và hỏi lại nhé.", null, false) else answer
+        } finally { frame.recycle() }
+    }
+
+    private suspend fun speakGuidance(id: Int, answer: ScreenVoiceGuide.Answer): Boolean {
+        val initialized = CompletableDeferred<Int>()
+        val engine = TextToSpeech(this) { initialized.complete(it) }
+        guideSpeech = engine
+        return try {
+            withTimeoutOrNull(25_000) {
+                val vietnamese = Locale.forLanguageTag("vi-VN")
+                if (initialized.await() != TextToSpeech.SUCCESS ||
+                    engine.setLanguage(vietnamese) < TextToSpeech.LANG_AVAILABLE) return@withTimeoutOrNull false
+                engine.setSpeechRate(.90f)
+                val spoken = CompletableDeferred<Boolean>()
+                engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        main.post {
+                            if (id != generation || closing) return@post
+                            answer.target?.let { showHighlight(it) }
+                            guideState = TranslationBubble.State.READING
+                            updateStatus("Đang nghe hướng dẫn…")
+                        }
+                    }
+                    override fun onDone(utteranceId: String?) { spoken.complete(true) }
+                    @Deprecated("Android callback")
+                    override fun onError(utteranceId: String?) { spoken.complete(false) }
+                })
+                if (engine.speak(answer.speech, TextToSpeech.QUEUE_FLUSH, null, "guide-$id") == TextToSpeech.ERROR)
+                    false else spoken.await()
+            } ?: false
+        } finally {
+            if (guideSpeech === engine) {
+                guideSpeech = null
+                engine.stop()
+                engine.shutdown()
+            }
+        }
     }
 
     private fun detachCapture() {
@@ -522,6 +680,13 @@ class ScreenTranslationService : Service() {
 
     private fun finishRequest() {
         ++generation
+        guideJob?.cancel()
+        guideJob = null
+        guideSpeech?.let { it.stop(); it.shutdown() }
+        guideSpeech = null
+        guideState = null
+        guideGoal = ""
+        guideHistory = emptyList()
         busy = false
         client?.close()
         client = null
@@ -570,17 +735,23 @@ class ScreenTranslationService : Service() {
         val button = TranslationBubble(context, ::dp)
         val menu = FloatingGlassMenu(
             context, windows, ::dp,
-            top = { (params.y - dp(22)).coerceIn(0, (resources.displayMetrics.heightPixels - dp(125)).coerceAtLeast(0)) },
+            top = { (params.y - dp(47)).coerceIn(0, (resources.displayMetrics.heightPixels - dp(174)).coerceAtLeast(0)) },
             onTranslate = {
-                if (busy) finishRequest()
+                if (busy || guideState != null) finishRequest()
                 chooseRegion()
             },
+            onGuide = ::askByVoice,
             onLock = ::lockFromMenu,
             onDismiss = { button.setInteracting(false) },
         )
         floatingMenu = menu
         button.setOnClickListener {
-            if (busy) chooseRegion()
+            if (guideState == TranslationBubble.State.FOLLOW_UP) askByVoice()
+            else if (busy && guideState != null) {
+                finishRequest()
+                updateStatus("Đã dừng hỏi AI")
+            }
+            else if (busy) chooseRegion()
             else if (menu.isOpen) menu.dismiss(animated = true)
             else {
                 button.setInteracting(true)
@@ -637,7 +808,8 @@ class ScreenTranslationService : Service() {
                         } else {
                             menu.dismiss(animated = true)
                             button.setInteracting(false)
-                            if (released && busy && kotlin.math.abs(inward) < dp(8) && kotlin.math.abs(vertical) < dp(8)) {
+                            if (released && (busy || guideState == TranslationBubble.State.FOLLOW_UP) &&
+                                kotlin.math.abs(inward) < dp(8) && kotlin.math.abs(vertical) < dp(8)) {
                                 view.performClick()
                             }
                         }
@@ -716,7 +888,7 @@ class ScreenTranslationService : Service() {
     }
 
     private fun updateStatus(message: String) {
-        bubble?.show(when {
+        bubble?.show(guideState ?: when {
             !busy -> TranslationBubble.State.READY
             speechStarted -> TranslationBubble.State.READING
             else -> TranslationBubble.State.WAITING
@@ -730,6 +902,7 @@ class ScreenTranslationService : Service() {
         floatingMenu = null
         dismissRegionPicker(showBubble = false)
         finishRequest()
+        guideScope.cancel()
         runCatching { display?.release() }; runCatching { projection?.stop() }
         removeOverlay(bubble)
         bubble = null

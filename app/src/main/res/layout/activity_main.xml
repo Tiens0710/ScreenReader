@@ -106,6 +106,18 @@
                 android:textColor="#A5F2CD"
                 android:textSize="16sp" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnVoiceGuide"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/guide_enable"
+                android:textColor="#A5F2CD"
+                android:textSize="16sp"
+                app:icon="@drawable/ic_screen_guide"
+                app:iconTint="#A5F2CD" />
+
             <!-- Secondary Actions Section -->
             <TextView
                 android:layout_width="match_parent"
